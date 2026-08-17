@@ -15,7 +15,7 @@ services:
     name: webinar-app
     runtime: node
     plan: free            # upgrade to starter to avoid free-tier sleep before launch
-    buildCommand: npm install && npm run build && npx drizzle-kit migrate
+    buildCommand: npm install --include=dev && npm run build && npx drizzle-kit migrate
     startCommand: npm start
     healthCheckPath: /
     envVars:
