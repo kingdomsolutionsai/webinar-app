@@ -44,7 +44,7 @@ services:
   - type: cron
     name: webinar-sequence-cron
     runtime: node
-    plan: free
+    plan: starter
     schedule: "0 * * * *"
     buildCommand: "true"
     startCommand: >
