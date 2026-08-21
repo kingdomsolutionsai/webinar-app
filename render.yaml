@@ -6,7 +6,7 @@
 databases:
   - name: webinar-db
     databaseName: webinar
-        plan: starter
+    plan: starter
     postgresMajorVersion: "16"
 
 services:
@@ -14,7 +14,7 @@ services:
   - type: web
     name: webinar-app
     runtime: node
-        plan: starter
+    plan: starter
     buildCommand: npm install --include=dev && npm run build && npx drizzle-kit migrate
     startCommand: npm start
     healthCheckPath: /
@@ -44,7 +44,7 @@ services:
   - type: cron
     name: webinar-sequence-cron
     runtime: node
-        plan: starter
+    plan: starter
     schedule: "0 * * * *"
     buildCommand: "true"
     startCommand: >
