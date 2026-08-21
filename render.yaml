@@ -6,7 +6,7 @@
 databases:
   - name: webinar-db
     databaseName: webinar
-    plan: free            # upgrade later if needed
+        plan: starter
     postgresMajorVersion: "16"
 
 services:
@@ -44,7 +44,7 @@ services:
   - type: cron
     name: webinar-sequence-cron
     runtime: node
-    plan: starter
+        plan: starter
     schedule: "0 * * * *"
     buildCommand: "true"
     startCommand: >
