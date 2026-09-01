@@ -205,15 +205,15 @@ export const MODE_COPY: Record<
     confirmOverline: string;
   }
 > = {
-  waitlist: {
-    navCta: "Get both free",
-    heroCta: "Send me both, free",
-    formHeading: "Start with either one",
-    formSubmit: "Send me both",
-    formSubmitting: "Preparing your files",
-    sectionOverline: "Start Reading Today",
+    waitlist: {
+    navCta: "Get the checklist, free",
+    heroCta: "Send me the checklist, free",
+    formHeading: "Get the Readiness Checklist",
+    formSubmit: "Send me the checklist",
+    formSubmitting: "Preparing your file",
+    sectionOverline: "Start Today",
     sectionHeading: "The date is not set. The work can start anyway.",
-    confirmOverline: "Both are ready",
+    confirmOverline: "Your checklist is ready",
   },
   scheduled: {
     navCta: "Reserve your seat",
