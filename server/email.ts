@@ -1,5 +1,3 @@
-
-Email updated · TS
 import {
   EXERCISE_PROMPT,
   MAIL_FROM,
@@ -479,4 +477,3 @@ export async function sendSignupEmails(input: {
   }).catch(() => undefined);
   return result;
 }
- 
