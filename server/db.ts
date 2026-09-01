@@ -1,18 +1,19 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+
+Db updated · TS
+import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import {
   eventSettings,
   InsertUser,
+  Registration,
   registrations,
   resourceDownloads,
   sequenceSends,
   users,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
-
 let _db: ReturnType<typeof drizzle> | null = null;
-
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
@@ -32,27 +33,22 @@ export async function getDb() {
   }
   return _db;
 }
-
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
   }
-
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot upsert user: database not available");
     return;
   }
-
   try {
     const values: InsertUser = {
       openId: user.openId,
     };
     const updateSet: Record<string, unknown> = {};
-
     const textFields = ["name", "email", "loginMethod"] as const;
     type TextField = (typeof textFields)[number];
-
     const assignNullable = (field: TextField) => {
       const value = user[field];
       if (value === undefined) return;
@@ -60,9 +56,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values[field] = normalized;
       updateSet[field] = normalized;
     };
-
     textFields.forEach(assignNullable);
-
     if (user.lastSignedIn !== undefined) {
       values.lastSignedIn = user.lastSignedIn;
       updateSet.lastSignedIn = user.lastSignedIn;
@@ -74,15 +68,12 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.role = 'admin';
       updateSet.role = 'admin';
     }
-
     if (!values.lastSignedIn) {
       values.lastSignedIn = new Date();
     }
-
     if (Object.keys(updateSet).length === 0) {
       updateSet.lastSignedIn = new Date();
     }
-
     await db.insert(users).values(values).onConflictDoUpdate({
       target: users.openId,
       set: updateSet,
@@ -92,23 +83,18 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     throw error;
   }
 }
-
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get user: database not available");
     return undefined;
   }
-
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
-
 /* ------------------------------------------------------------------ *
  * Webinar registrations
  * ------------------------------------------------------------------ */
-
 export type NewRegistration = {
   firstName: string;
   lastName: string;
@@ -116,7 +102,6 @@ export type NewRegistration = {
   track?: string | null;
   resource?: string | null;
 };
-
 /**
  * Insert a registration. Email is unique, so a repeat submission from the same
  * address updates the existing row rather than creating a duplicate — a visitor
@@ -125,9 +110,7 @@ export type NewRegistration = {
 export async function createRegistration(input: NewRegistration) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-
   const email = input.email.trim().toLowerCase();
-
   await db
     .insert(registrations)
     .values({
@@ -146,23 +129,52 @@ export async function createRegistration(input: NewRegistration) {
         resource: input.resource ?? null,
       },
     });
-
   const rows = await db
     .select()
     .from(registrations)
     .where(eq(registrations.email, email))
     .limit(1);
-
   return rows[0];
 }
-
 /** All registrations, newest first. Ordering in the UI is handled client-side. */
 export async function listRegistrations() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(registrations).orderBy(desc(registrations.createdAt));
 }
-
+/** One registration by email, or undefined if none exists. Used by the double
+ * opt-in confirm handler to look up who is confirming without a separate list. */
+export async function getRegistrationByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const key = email.trim().toLowerCase();
+  const rows = await db.select().from(registrations).where(eq(registrations.email, key)).limit(1);
+  return rows[0];
+}
+/**
+ * Marks an address as having clicked the double opt-in confirmation link.
+ * Idempotent: clicking the link twice is harmless. `alreadyConfirmed` tells the
+ * caller whether this click is the first (so it should fire the delivery +
+ * owner-notification emails) or a repeat (so it should not send them again).
+ */
+export async function confirmRegistration(
+  email: string,
+): Promise<{ row: Registration | undefined; alreadyConfirmed: boolean }> {
+  const db = await getDb();
+  if (!db) return { row: undefined, alreadyConfirmed: false };
+  const key = email.trim().toLowerCase();
+  const existing = await db
+    .select()
+    .from(registrations)
+    .where(eq(registrations.email, key))
+    .limit(1);
+  const row = existing[0];
+  if (!row) return { row: undefined, alreadyConfirmed: false };
+  if (row.confirmedAt) return { row, alreadyConfirmed: true };
+  const confirmedAt = new Date();
+  await db.update(registrations).set({ confirmedAt }).where(eq(registrations.email, key));
+  return { row: { ...row, confirmedAt }, alreadyConfirmed: false };
+}
 /**
  * Records the outcome of the resource-delivery email so a failure is visible in
  * the dashboard rather than silent. Never throws: bookkeeping must not take down
@@ -184,14 +196,12 @@ export async function setRegistrationEmailStatus(
     console.error("[Email] Could not record send status:", error);
   }
 }
-
 export async function countRegistrations() {
   const db = await getDb();
   if (!db) return 0;
   const rows = await db.select().from(registrations);
   return rows.length;
 }
-
 /**
  * Marks an address as opted out. Idempotent: clicking the link twice is harmless,
  * and the first opt-out time is preserved rather than overwritten.
@@ -202,7 +212,6 @@ export async function unsubscribeByEmail(email: string) {
   const db = await getDb();
   if (!db) return undefined;
   const key = email.trim().toLowerCase();
-
   const existing = await db
     .select()
     .from(registrations)
@@ -210,7 +219,6 @@ export async function unsubscribeByEmail(email: string) {
     .limit(1);
   const row = existing[0];
   if (!row) return undefined;
-
   if (!row.unsubscribedAt) {
     await db
       .update(registrations)
@@ -219,7 +227,6 @@ export async function unsubscribeByEmail(email: string) {
   }
   return row;
 }
-
 /** True when this address has opted out and must not be emailed again. */
 export async function isUnsubscribed(email: string): Promise<boolean> {
   const db = await getDb();
@@ -231,11 +238,9 @@ export async function isUnsubscribed(email: string): Promise<boolean> {
     .limit(1);
   return Boolean(rows[0]?.unsubscribedAt);
 }
-
 /* ------------------------------------------------------------------ *
  * Event settings (owner-editable placeholders)
  * ------------------------------------------------------------------ */
-
 export async function getAllEventSettings(): Promise<Record<string, string>> {
   const db = await getDb();
   if (!db) return {};
@@ -246,7 +251,6 @@ export async function getAllEventSettings(): Promise<Record<string, string>> {
   }
   return out;
 }
-
 export async function setEventSetting(settingKey: string, settingValue: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -255,11 +259,9 @@ export async function setEventSetting(settingKey: string, settingValue: string) 
     .values({ settingKey, settingValue })
     .onConflictDoUpdate({ target: eventSettings.settingKey, set: { settingValue } });
 }
-
 /* ------------------------------------------------------------------ *
  * Resource downloads
  * ------------------------------------------------------------------ */
-
 /**
  * Records one resource open. Never throws: a tracking failure must never stop a
  * person from receiving the file they were promised.
@@ -277,7 +279,6 @@ export async function recordDownload(input: {
     const db = await getDb();
     if (!db) return;
     const email = input.email.trim().toLowerCase();
-
     const recent = await db
       .select({ createdAt: resourceDownloads.createdAt })
       .from(resourceDownloads)
@@ -286,10 +287,8 @@ export async function recordDownload(input: {
       )
       .orderBy(desc(resourceDownloads.createdAt))
       .limit(1);
-
     const last = recent[0]?.createdAt;
     if (last && Date.now() - new Date(last).getTime() < DOWNLOAD_DEDUPE_WINDOW_MS) return;
-
     await db.insert(resourceDownloads).values({
       email,
       resource: input.resource,
@@ -299,24 +298,22 @@ export async function recordDownload(input: {
     console.error("[Downloads] Could not record open:", error);
   }
 }
-
 /** Two opens of the same file inside this window count once. */
 export const DOWNLOAD_DEDUPE_WINDOW_MS = 30 * 60 * 1000;
-
 /** All download events, newest first. Aggregated per person in the router. */
 export async function listDownloads() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(resourceDownloads).orderBy(desc(resourceDownloads.createdAt));
 }
-
 /* ------------------------------------------------------------------ *
  * Follow-up sequence
  * ------------------------------------------------------------------ */
-
 /**
- * Everyone still eligible for the sequence: signed up, never opted out.
- * Step filtering happens in the dispatcher, which knows the schedule.
+ * Everyone still eligible for the sequence: signed up, confirmed their email via
+ * the double opt-in link, and never opted out. An unconfirmed address has never
+ * verified it belongs to a real, reachable inbox, so the sequence must not send
+ * to it. Step filtering happens in the dispatcher, which knows the schedule.
  */
 export async function listSequenceCandidates() {
   const db = await getDb();
@@ -324,17 +321,15 @@ export async function listSequenceCandidates() {
   return db
     .select()
     .from(registrations)
-    .where(isNull(registrations.unsubscribedAt))
+    .where(and(isNull(registrations.unsubscribedAt), isNotNull(registrations.confirmedAt)))
     .orderBy(registrations.createdAt);
 }
-
 /** Every send already recorded, so the dispatcher never repeats one. */
 export async function listSequenceSends() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(sequenceSends);
 }
-
 /**
  * Claims a step for one person before sending.
  *
@@ -359,7 +354,6 @@ export async function claimSequenceStep(email: string, step: number): Promise<bo
     return false;
   }
 }
-
 /** Records the outcome against a previously claimed step. */
 export async function finishSequenceStep(
   email: string,
@@ -383,7 +377,6 @@ export async function finishSequenceStep(
     console.error("[Sequence] Could not record send outcome:", error);
   }
 }
-
 /**
  * Releases a claimed step so a later run can retry it. Used when the send fails
  * for a reason that may be transient, e.g. the provider was briefly unreachable.
@@ -404,3 +397,4 @@ export async function releaseSequenceStep(email: string, step: number) {
     console.error("[Sequence] Could not release step:", error);
   }
 }
+ 
