@@ -6,6 +6,7 @@ import {
   Overline,
   SectionHeading,
 } from "@/components/brand";
+import { ChatWidget } from "@/components/ChatWidget";
 import { RegistrationForm } from "@/components/RegistrationForm";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -22,12 +23,10 @@ import {
 } from "@shared/event";
 import { ArrowRight, BookOpen, Check } from "lucide-react";
 import { useState } from "react";
-
 /* ------------------------------------------------------------------ *
  * Content. Every figure and quotation below is drawn from the book and
  * is traceable to BLS, Census, SBA, or a presidential/corporate archive.
  * ------------------------------------------------------------------ */
-
 const EIGHT_PARTS = [
   {
     n: "I",
@@ -70,7 +69,6 @@ const EIGHT_PARTS = [
     body: "The 50 fastest-growing industries in the United States, with the percentage-versus-absolute distinction that changes how you read them.",
   },
 ];
-
 const TAKEAWAYS = [
   {
     n: "01",
@@ -91,7 +89,6 @@ const TAKEAWAYS = [
     accent: "green" as const,
   },
 ];
-
 const FOUNDERS = [
   {
     name: "Abraham Lincoln",
@@ -137,9 +134,7 @@ const FOUNDERS = [
     source: "Public interviews and Spanx company history",
   },
 ];
-
 /* ------------------------------------------------------------------ */
-
 function EventDetail({
   label,
   value,
@@ -163,28 +158,23 @@ function EventDetail({
     </div>
   );
 }
-
 export default function Home() {
   const { data: settings } = trpc.settings.get.useQuery();
   const [selectedTrack, setSelectedTrack] = useState<TrackId | null>(null);
-
   const event = {
     date: settings?.date ?? "[DATE]",
     time: settings?.time ?? "[TIME]",
     duration: settings?.duration ?? "[DURATION]",
     price: settings?.price ?? "[PRICE]",
   };
-
   // Mode is derived from the date, never set by hand, so the page copy and the
   // displayed date can never contradict each other.
   const mode = resolveMode(event.date);
   const copy = MODE_COPY[mode];
   const isWaitlist = mode === "waitlist";
-
   const scrollToRegister = () => {
     document.getElementById("register")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
-
   return (
     <div className="min-h-screen bg-background">
       {/* ---------------- Header ---------------- */}
@@ -208,7 +198,6 @@ export default function Home() {
           </Button>
         </div>
       </header>
-
       {/* ---------------- Hero ---------------- */}
       <section className="relative overflow-hidden bg-ink">
         <div className="container grid items-center gap-14 py-16 lg:grid-cols-[1.15fr_0.85fr] lg:py-24">
@@ -228,7 +217,6 @@ export default function Home() {
               eight systems every business runs on, the correct start order, and where to begin with
               AI while human authority stays intact.
             </p>
-
             {isWaitlist ? (
               <div className="mt-9 max-w-xl border-l-2 border-gold pl-6">
                 <p className="flex items-center gap-2 font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-gold">
@@ -247,10 +235,8 @@ export default function Home() {
                 <EventDetail label="Date" value={event.date} />
                 <EventDetail label="Time" value={event.time} />
                 <EventDetail label="Duration" value={event.duration} />
-
               </div>
             )}
-
             <div className="mt-10 flex flex-wrap items-center gap-5">
               <Button
                 onClick={scrollToRegister}
@@ -264,7 +250,6 @@ export default function Home() {
               </p>
             </div>
           </div>
-
           {/* Book cover */}
           <div className="flex justify-center lg:justify-end">
             <div className="relative">
@@ -278,7 +263,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* ---------------- The argument ---------------- */}
       <section className="border-y border-gold/30 bg-gold-tint">
         <div className="container py-14">
@@ -315,7 +299,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* ---------------- The core promise ----------------
           Placed straight after the survival curve: the data states the problem,
           this states why it matters to the person reading it. Every one of the
@@ -337,7 +320,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* ---------------- Eight parts ---------------- */}
       <section className="container py-20">
         <SectionHeading
@@ -345,7 +327,6 @@ export default function Home() {
           title="Eight parts, arranged in decision order"
           intro="The book is not a collection of ideas. It is a sequence — and the sequence is the point. We walk all eight parts, with the practical instrument from each one."
         />
-
         <div className="mt-12 grid gap-x-10 gap-y-9 sm:grid-cols-2 lg:grid-cols-4">
           {EIGHT_PARTS.map(part => (
             <div key={part.n} className="border-t-2 border-navy pt-5">
@@ -359,7 +340,6 @@ export default function Home() {
             </div>
           ))}
         </div>
-
         {/* 50 industries feature */}
         <div className="mt-16 grid items-center gap-10 border border-navy bg-navy px-8 py-10 lg:grid-cols-[1fr_1.3fr] lg:px-12">
           <div>
@@ -385,7 +365,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* ---------------- Three takeaways ---------------- */}
       <section className="border-y border-border bg-secondary/40">
         <div className="container py-20">
@@ -425,7 +404,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* ---------------- Three readers ---------------- */}
       <section className="container py-20">
         <SectionHeading
@@ -433,7 +411,6 @@ export default function Home() {
           title="Three founders will join this session, and they need different things"
           intro="Choose the one that describes you. Founders arrive in different places, and the worst outcome is spending your time in the wrong chapter."
         />
-
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {THREE_TRACKS.map(track => {
             const active = selectedTrack === track.id;
@@ -499,13 +476,11 @@ export default function Home() {
             );
           })}
         </div>
-
         <p className="mt-8 font-serif text-[16px] italic leading-relaxed text-ink/60">
           If the third one is you, hear this plainly: starting there is not falling behind. For your
           situation, it is the correct order.
         </p>
       </section>
-
       {/* ---------------- Registration ---------------- */}
       <section id="register" className="scroll-mt-8 border-y border-gold/25 bg-ink">
         <div className="container grid gap-14 py-20 lg:grid-cols-[1fr_0.95fr]">
@@ -515,7 +490,6 @@ export default function Home() {
               {copy.sectionHeading}
             </h2>
             <GoldRule className="mt-5" />
-
             {isWaitlist ? (
               <>
                 <p className="mt-8 max-w-lg font-serif text-[17px] leading-relaxed text-white/75">
@@ -526,7 +500,6 @@ export default function Home() {
                   conditions to meet before you take money from a client, in a PDF you can type
                   into and save.
                 </p>
-
                 <div className="mt-8 grid max-w-lg gap-4 sm:grid-cols-2">
                   {[
                     { k: `${SAMPLE_CHAPTER.pages}-page chapter`, v: "Complete, not an excerpt" },
@@ -552,16 +525,14 @@ export default function Home() {
                   <EventDetail label="Date" value={event.date} />
                   <EventDetail label="Time" value={event.time} />
                   <EventDetail label="Duration" value={event.duration} />
-  
-                </div>
 
+                </div>
                 <p className="mt-9 max-w-lg font-serif text-[17px] leading-relaxed text-white/75">
                   Bring something to write with. There is one exercise, it takes about four minutes,
                   and it is the part most people tell me they remember.
                 </p>
               </>
             )}
-
             <div className="mt-9 border-l-2 border-gold pl-6">
               <p className="font-serif text-[16px] italic leading-relaxed text-white/70">
                 This session is educational and is not legal, tax, or financial advice. It does not
@@ -569,11 +540,9 @@ export default function Home() {
               </p>
             </div>
           </div>
-
           <RegistrationForm track={selectedTrack} mode={mode} />
         </div>
       </section>
-
       {/* ---------------- Founder's Table ---------------- */}
       <section className="container py-20">
         <SectionHeading
@@ -581,7 +550,6 @@ export default function Home() {
           title="Documented accounts, not motivational folklore"
           intro="The book carries twelve accounts of presidents and founders who went out on their own. Every quotation is traced to a presidential library, a corporate archive, or the subject's own book. Where a widely circulated quote could not be verified, it was excluded rather than repeated."
         />
-
         <div className="mt-12 grid gap-8 lg:grid-cols-2">
           {FOUNDERS.map((founder, index) => (
             <div
@@ -633,21 +601,17 @@ export default function Home() {
           ))}
         </div>
       </section>
-
       {/* ---------------- Founder / close ---------------- */}
       <section className="border-t border-gold/25 bg-ink">
         <div className="container py-20 text-center">
           <LionDivider className="mx-auto max-w-md" />
-
           <p className="mx-auto mt-12 max-w-2xl font-serif text-2xl italic leading-relaxed text-white">
             You have a gift, and it was given to you for a reason. The work now is to build the
             structure that lets you{" "}
             <span className="font-semibold text-gold">steward it well</span> &mdash; without
             spending yourself to do it, and without compromising what you will not compromise.
           </p>
-
           <div className="mx-auto mt-12 h-px w-24 bg-gold/50" />
-
           <p className="mt-8 font-display text-xl font-bold text-white">Tabitha Rector</p>
           <div className="mx-auto mt-3 h-px w-12 bg-gold" />
           <p className="mt-3 font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">
@@ -656,7 +620,6 @@ export default function Home() {
           <p className="mt-1.5 font-sans text-[10px] uppercase tracking-[0.18em] text-white/45">
             Leadership Coach &middot; Certified AI Strategy Consultant
           </p>
-
           <div className="mt-10">
             <Button
               onClick={scrollToRegister}
@@ -668,7 +631,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       <footer className="border-t border-gold/20 bg-ink">
         <div className="container flex flex-col items-center justify-between gap-4 py-8 sm:flex-row">
           <div className="flex items-center gap-3">
@@ -682,6 +644,7 @@ export default function Home() {
           </p>
         </div>
       </footer>
+      <ChatWidget />
     </div>
   );
 }
