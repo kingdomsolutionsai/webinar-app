@@ -5,25 +5,14 @@ import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
-  AUDIT_INVITATION,
-  EXERCISE_PROMPT,
-  EMAIL_ON_ITS_WAY,
   MODE_COPY,
-  READINESS_CHECKLIST,
   THREE_TRACKS,
   type PageMode,
   type ResourceChoice,
   type ResourceId,
   type TrackId,
 } from "@shared/event";
-import {
-  AlertCircle,
-  ArrowUpRight,
-  ClipboardCheck,
-  Download,
-  Loader2,
-  Mail,
-} from "lucide-react";
+import { AlertCircle, Loader2, Mail } from "lucide-react";
 import { useState } from "react";
 type Errors = Partial<Record<"firstName" | "lastName" | "email", string>>;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -36,50 +25,6 @@ function validate(values: { firstName: string; lastName: string; email: string }
   else if (!EMAIL_RE.test(email)) errors.email = "Please enter a valid email address";
   return errors;
 }
-/**
- * The single free resource. Kept as its own component (rather than inlined)
- * so the confirmation panel below stays easy to read.
- */
-function ResourceDownloads({
-  links,
-}: {
-  /**
-   * Counted link returned by the signup call. Falling back to the raw file URL
-   * means a tracking problem costs a statistic, never a download.
-   */
-  links?: { chapter: string; checklist: string };
-}) {
-  const href = links?.checklist ?? READINESS_CHECKLIST.url;
-  return (
-    <div className="mt-7 space-y-3">
-      <div className="border border-gold bg-gold-tint p-6">
-        <div className="flex items-start gap-3">
-          <ClipboardCheck className="mt-0.5 size-4 shrink-0 text-gold-dark" />
-          <div>
-            <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-dark">
-              Ready now
-            </p>
-            <p className="mt-2 font-display text-lg font-bold leading-tight text-navy">
-              {READINESS_CHECKLIST.title}
-            </p>
-            <p className="mt-2 font-serif text-[16px] leading-relaxed text-ink/75">
-              {READINESS_CHECKLIST.pages} pages with {READINESS_CHECKLIST.fields} fillable
-              fields. Type your answers straight into it and save the file — nothing to print.
-            </p>
-          </div>
-        </div>
-        <Button
-          asChild
-          className="mt-5 w-full bg-ink font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-gold hover:bg-ink/90">
-          <a href={href} download={READINESS_CHECKLIST.filename}>
-            <Download className="mr-1.5 size-3.5" />
-            Download the checklist
-          </a>
-        </Button>
-      </div>
-    </div>
-  );
-}
 export function RegistrationForm({
   track,
   mode,
@@ -91,17 +36,16 @@ export function RegistrationForm({
   const [values, setValues] = useState({ firstName: "", lastName: "", email: "" });
   const [errors, setErrors] = useState<Errors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  // Set once the signup call succeeds. The checklist itself has not been sent
+  // yet at this point — only the confirmation email has — so this screen asks
+  // for a click on that link rather than offering a download.
   const [confirmedName, setConfirmedName] = useState<string | null>(null);
   // Only one free resource is offered now, so this is fixed rather than a
   // visitor choice.
   const resource: ResourceId = "checklist";
-  const [downloadLinks, setDownloadLinks] = useState<
-    { chapter: string; checklist: string } | undefined
-  >(undefined);
   const register = trpc.registration.create.useMutation({
     onSuccess: data => {
       setConfirmedName(data.firstName);
-      setDownloadLinks(data.downloads);
     },
   });
   const setField = (field: keyof typeof values) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,94 +75,30 @@ export function RegistrationForm({
   };
   /* -------------------- Confirmation -------------------- */
   if (confirmedName) {
-    const chosen = THREE_TRACKS.find(item => item.id === track);
     return (
       <div className="border border-gold bg-white p-8 sm:p-10">
         <div className="flex items-center gap-4">
           <LionMark size={48} />
           <div>
             <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.22em] text-gold">
-              {copy.confirmOverline}
+              Check your email
             </p>
             <h3 className="mt-1 font-display text-2xl font-black text-navy">
-              Thank you, {confirmedName}.
+              Almost there, {confirmedName}.
             </h3>
           </div>
         </div>
         <div className="mt-7 h-[3px] w-14 bg-gold" />
         <p className="mt-7 font-serif text-[17px] leading-relaxed text-ink/80">
+          I just sent a confirmation link to the address you entered. Click it and the
+          First-Sale Readiness Checklist is sent straight to your inbox.
           {mode === "waitlist"
-            ? "You are on the list. When the session is scheduled you will be the first to know — and your checklist is ready right now."
-            : "You are registered. Watch for details at the email address you provided."}
+            ? " You'll also be first to know when the live session is scheduled."
+            : " That's also what locks in your seat for the session."}
         </p>
         <p className="mt-3 flex items-start gap-2 font-serif text-[15px] leading-relaxed text-ink/60">
           <Mail className="mt-1 size-3.5 shrink-0 text-gold" />
-          {EMAIL_ON_ITS_WAY}
-        </p>
-        <ResourceDownloads links={downloadLinks} />
-        {/* The one-sentence exercise from the close of the session. */}
-        <div className="mt-7 border border-navy/25 bg-secondary/50 p-6">
-          <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-navy">
-            {EXERCISE_PROMPT.heading}
-          </p>
-          <p className="mt-3 font-serif text-[17px] leading-relaxed text-ink/85">
-            {EXERCISE_PROMPT.instruction}
-          </p>
-          <div className="mt-5 space-y-4 border-t border-navy/15 pt-5">
-            <div>
-              <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-green">
-                {EXERCISE_PROMPT.checkLabel}
-              </p>
-              <p className="mt-1.5 font-serif text-[16px] leading-relaxed text-ink/75">
-                {EXERCISE_PROMPT.check}
-              </p>
-            </div>
-            <div>
-              <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-gold-dark">
-                {EXERCISE_PROMPT.reframeLabel}
-              </p>
-              <p className="mt-1.5 font-serif text-[16px] leading-relaxed text-ink/75">
-                {EXERCISE_PROMPT.reframe}
-              </p>
-            </div>
-          </div>
-        </div>
-        {chosen ? (
-          <div className="mt-7 border-l-2 border-navy pl-5">
-            <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/45">
-              Your starting point
-            </p>
-            <p className="mt-1.5 font-display text-lg font-bold text-navy">{chosen.label}</p>
-            <p className="mt-2 font-serif text-[16px] leading-relaxed text-ink/75">
-              {chosen.startHere}
-            </p>
-          </div>
-        ) : null}
-        {/*
-          The Capacity Leak Audit™ invitation. Deliberately quieter than
-          everything above it — a hairline rule rather than a filled panel —
-          because the free resource is the promise of this screen and must
-          remain its point. The heading is a question, so a reader who does not
-          have this problem reads one line and moves on without friction.
-        */}
-        <div className="mt-8 border-t border-border pt-6">
-          <p className="font-display text-[17px] font-bold text-navy">
-            {AUDIT_INVITATION.heading}
-          </p>
-          <p className="mt-2 font-serif text-[16px] leading-relaxed text-ink/70">
-            {AUDIT_INVITATION.body}
-          </p>
-          <a
-            href={AUDIT_INVITATION.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 inline-flex items-center gap-2 border border-navy px-5 py-2.5 font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-navy transition-colors duration-200 hover:bg-navy hover:text-white">
-            {AUDIT_INVITATION.cta}
-            <ArrowUpRight className="size-3.5" />
-          </a>
-        </div>
-        <p className="mt-8 font-serif text-[15px] italic text-ink/55">
-          Lead well. &mdash; Tabitha Rector, Founder Kingdom Solutions AI&trade;
+          If it has not arrived in a few minutes, please check your spam folder.
         </p>
       </div>
     );
@@ -238,8 +118,8 @@ export function RegistrationForm({
       <div className="mt-5 h-[3px] w-14 bg-gold" />
       {mode === "waitlist" ? (
         <p className="mt-6 font-serif text-[16px] leading-relaxed text-ink/70">
-          It arrives immediately, at no cost. You will also be first to know when the live
-          session is scheduled.
+          One quick email confirmation and it's yours, at no cost. You will also be first to
+          know when the live session is scheduled.
         </p>
       ) : null}
       <form onSubmit={handleSubmit} noValidate className="mt-7 space-y-5">
