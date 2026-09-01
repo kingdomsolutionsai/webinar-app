@@ -10,8 +10,6 @@ import {
   EMAIL_ON_ITS_WAY,
   MODE_COPY,
   READINESS_CHECKLIST,
-  RESOURCES,
-  SAMPLE_CHAPTER,
   THREE_TRACKS,
   type PageMode,
   type ResourceChoice,
@@ -21,19 +19,14 @@ import {
 import {
   AlertCircle,
   ArrowUpRight,
-  BookOpen,
-  Check,
   ClipboardCheck,
   Download,
   Loader2,
   Mail,
 } from "lucide-react";
 import { useState } from "react";
-
 type Errors = Partial<Record<"firstName" | "lastName" | "email", string>>;
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
 function validate(values: { firstName: string; lastName: string; email: string }): Errors {
   const errors: Errors = {};
   if (!values.firstName.trim()) errors.firstName = "Please enter your first name";
@@ -43,90 +36,50 @@ function validate(values: { firstName: string; lastName: string; email: string }
   else if (!EMAIL_RE.test(email)) errors.email = "Please enter a valid email address";
   return errors;
 }
-
 /**
- * Both downloads, with the one the visitor asked for shown first. Everyone gets
- * both — the choice only decides emphasis and tells Tabitha what they wanted.
+ * The single free resource. Kept as its own component (rather than inlined)
+ * so the confirmation panel below stays easy to read.
  */
 function ResourceDownloads({
-  mode,
-  chose,
   links,
 }: {
-  mode: PageMode;
-  chose: ResourceId;
   /**
-   * Counted links returned by the signup call. Falling back to the raw file URL
+   * Counted link returned by the signup call. Falling back to the raw file URL
    * means a tracking problem costs a statistic, never a download.
    */
   links?: { chapter: string; checklist: string };
 }) {
-  const primary = chose === "checklist" ? READINESS_CHECKLIST : SAMPLE_CHAPTER;
-  const secondary = chose === "checklist" ? SAMPLE_CHAPTER : READINESS_CHECKLIST;
-  const primaryIsChecklist = chose === "checklist";
-  const primaryHref = primaryIsChecklist
-    ? links?.checklist ?? primary.url
-    : links?.chapter ?? primary.url;
-  const secondaryHref = primaryIsChecklist
-    ? links?.chapter ?? secondary.url
-    : links?.checklist ?? secondary.url;
-
+  const href = links?.checklist ?? READINESS_CHECKLIST.url;
   return (
     <div className="mt-7 space-y-3">
-      {/* What they asked for, given prominence. */}
       <div className="border border-gold bg-gold-tint p-6">
         <div className="flex items-start gap-3">
-          {primaryIsChecklist ? (
-            <ClipboardCheck className="mt-0.5 size-4 shrink-0 text-gold-dark" />
-          ) : (
-            <BookOpen className="mt-0.5 size-4 shrink-0 text-gold-dark" />
-          )}
+          <ClipboardCheck className="mt-0.5 size-4 shrink-0 text-gold-dark" />
           <div>
             <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-dark">
-              {mode === "waitlist" ? "Ready now" : "While you wait"}
+              Ready now
             </p>
             <p className="mt-2 font-display text-lg font-bold leading-tight text-navy">
-              {primary.title}
+              {READINESS_CHECKLIST.title}
             </p>
             <p className="mt-2 font-serif text-[16px] leading-relaxed text-ink/75">
-              {primaryIsChecklist
-                ? `${READINESS_CHECKLIST.pages} pages with ${READINESS_CHECKLIST.fields} fillable fields. Type your answers straight into it and save the file — nothing to print.`
-                : `${SAMPLE_CHAPTER.pages} pages, reproduced in full from the book. Six chapters and one documented founder account. Nothing has been shortened or held back.`}
+              {READINESS_CHECKLIST.pages} pages with {READINESS_CHECKLIST.fields} fillable
+              fields. Type your answers straight into it and save the file — nothing to print.
             </p>
           </div>
         </div>
         <Button
           asChild
           className="mt-5 w-full bg-ink font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-gold hover:bg-ink/90">
-          <a href={primaryHref} download={primary.filename}>
+          <a href={href} download={READINESS_CHECKLIST.filename}>
             <Download className="mr-1.5 size-3.5" />
-            Download {primaryIsChecklist ? "the checklist" : "Part One"}
-          </a>
-        </Button>
-      </div>
-
-      {/* The other one, offered plainly rather than upsold. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-secondary/40 px-5 py-4">
-        <div>
-          <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.18em] text-ink/45">
-            Also yours, at no cost
-          </p>
-          <p className="mt-1 font-display text-[15px] font-bold text-navy">{secondary.title}</p>
-        </div>
-        <Button
-          asChild
-          variant="outline"
-          className="border-navy/30 bg-white font-sans text-[10px] font-bold uppercase tracking-[0.16em] text-navy hover:border-gold">
-          <a href={secondaryHref} download={secondary.filename}>
-            <Download className="mr-1.5 size-3" />
-            Download
+            Download the checklist
           </a>
         </Button>
       </div>
     </div>
   );
 }
-
 export function RegistrationForm({
   track,
   mode,
@@ -139,18 +92,18 @@ export function RegistrationForm({
   const [errors, setErrors] = useState<Errors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [confirmedName, setConfirmedName] = useState<string | null>(null);
+  // Only one free resource is offered now, so this is fixed rather than a
+  // visitor choice.
   const resource: ResourceId = "checklist";
   const [downloadLinks, setDownloadLinks] = useState<
     { chapter: string; checklist: string } | undefined
   >(undefined);
-
   const register = trpc.registration.create.useMutation({
     onSuccess: data => {
       setConfirmedName(data.firstName);
       setDownloadLinks(data.downloads);
     },
   });
-
   const setField = (field: keyof typeof values) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const next = { ...values, [field]: event.target.value };
     setValues(next);
@@ -158,19 +111,16 @@ export function RegistrationForm({
     // appear while someone is still typing their first character.
     if (touched[field]) setErrors(validate(next));
   };
-
   const blurField = (field: keyof typeof values) => () => {
     setTouched(prev => ({ ...prev, [field]: true }));
     setErrors(validate(values));
   };
-
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     const found = validate(values);
     setErrors(found);
     setTouched({ firstName: true, lastName: true, email: true });
     if (Object.keys(found).length > 0) return;
-
     register.mutate({
       firstName: values.firstName.trim(),
       lastName: values.lastName.trim(),
@@ -179,7 +129,6 @@ export function RegistrationForm({
       resource: resource as ResourceChoice,
     });
   };
-
   /* -------------------- Confirmation -------------------- */
   if (confirmedName) {
     const chosen = THREE_TRACKS.find(item => item.id === track);
@@ -196,22 +145,17 @@ export function RegistrationForm({
             </h3>
           </div>
         </div>
-
         <div className="mt-7 h-[3px] w-14 bg-gold" />
-
         <p className="mt-7 font-serif text-[17px] leading-relaxed text-ink/80">
           {mode === "waitlist"
-            ? "You are on the list. When the session is scheduled you will be the first to know — and your chapter is ready to read right now."
+            ? "You are on the list. When the session is scheduled you will be the first to know — and your checklist is ready right now."
             : "You are registered. Watch for details at the email address you provided."}
         </p>
-
         <p className="mt-3 flex items-start gap-2 font-serif text-[15px] leading-relaxed text-ink/60">
           <Mail className="mt-1 size-3.5 shrink-0 text-gold" />
           {EMAIL_ON_ITS_WAY}
         </p>
-
-        <ResourceDownloads mode={mode} chose={resource} links={downloadLinks} />
-
+        <ResourceDownloads links={downloadLinks} />
         {/* The one-sentence exercise from the close of the session. */}
         <div className="mt-7 border border-navy/25 bg-secondary/50 p-6">
           <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-navy">
@@ -220,7 +164,6 @@ export function RegistrationForm({
           <p className="mt-3 font-serif text-[17px] leading-relaxed text-ink/85">
             {EXERCISE_PROMPT.instruction}
           </p>
-
           <div className="mt-5 space-y-4 border-t border-navy/15 pt-5">
             <div>
               <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-green">
@@ -240,7 +183,6 @@ export function RegistrationForm({
             </div>
           </div>
         </div>
-
         {chosen ? (
           <div className="mt-7 border-l-2 border-navy pl-5">
             <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/45">
@@ -252,11 +194,10 @@ export function RegistrationForm({
             </p>
           </div>
         ) : null}
-
         {/*
           The Capacity Leak Audit™ invitation. Deliberately quieter than
           everything above it — a hairline rule rather than a filled panel —
-          because the two free resources are the promise of this screen and must
+          because the free resource is the promise of this screen and must
           remain its point. The heading is a question, so a reader who does not
           have this problem reads one line and moves on without friction.
         */}
@@ -276,38 +217,31 @@ export function RegistrationForm({
             <ArrowUpRight className="size-3.5" />
           </a>
         </div>
-
         <p className="mt-8 font-serif text-[15px] italic text-ink/55">
           Lead well. &mdash; Tabitha Rector, Founder Kingdom Solutions AI&trade;
         </p>
       </div>
     );
   }
-
   /* -------------------- Form -------------------- */
   const fields = [
     { id: "firstName" as const, label: "First name", autoComplete: "given-name", type: "text" },
     { id: "lastName" as const, label: "Last name", autoComplete: "family-name", type: "text" },
     { id: "email" as const, label: "Email address", autoComplete: "email", type: "email" },
   ];
-
   return (
     <div className="border border-gold/50 bg-white p-8 sm:p-10">
       <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.22em] text-gold-dark">
-        {mode === "waitlist" ? "Two Free Resources" : "Registration"}
+        {mode === "waitlist" ? "Free Resource" : "Registration"}
       </p>
       <h3 className="mt-2 font-display text-2xl font-black text-navy">{copy.formHeading}</h3>
       <div className="mt-5 h-[3px] w-14 bg-gold" />
-
-           {mode === "waitlist" ? (
+      {mode === "waitlist" ? (
         <p className="mt-6 font-serif text-[16px] leading-relaxed text-ink/70">
           It arrives immediately, at no cost. You will also be first to know when the live
           session is scheduled.
         </p>
       ) : null}
-
-      
-
       <form onSubmit={handleSubmit} noValidate className="mt-7 space-y-5">
         {fields.map(field => {
           const error = errors[field.id];
@@ -346,7 +280,6 @@ export function RegistrationForm({
             </div>
           );
         })}
-
         {track ? (
           <p className="font-sans text-[11px] uppercase tracking-[0.14em] text-ink/45">
             Starting point selected:{" "}
@@ -355,7 +288,6 @@ export function RegistrationForm({
             </span>
           </p>
         ) : null}
-
         {register.isError ? (
           <p
             role="alert"
@@ -365,7 +297,6 @@ export function RegistrationForm({
             tabitha@kingdomsolutionsai.com and I will add you personally.
           </p>
         ) : null}
-
         <Button
           type="submit"
           size="lg"
@@ -380,10 +311,9 @@ export function RegistrationForm({
             copy.formSubmit
           )}
         </Button>
-
         <p className="font-sans text-[11px] leading-relaxed text-ink/45">
           {mode === "waitlist"
-            ? "Your details are used only to send the chapter and announce the session. No sharing, no selling."
+            ? "Your details are used only to send the checklist and announce the session. No sharing, no selling."
             : "Your details are used only for this session. No sharing, no selling."}
         </p>
       </form>
