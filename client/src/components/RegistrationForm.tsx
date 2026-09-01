@@ -139,7 +139,7 @@ export function RegistrationForm({
   const [errors, setErrors] = useState<Errors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [confirmedName, setConfirmedName] = useState<string | null>(null);
-  const [resource, setResource] = useState<ResourceId>("chapter");
+  const resource: ResourceId = "checklist";
   const [downloadLinks, setDownloadLinks] = useState<
     { chapter: string; checklist: string } | undefined
   >(undefined);
@@ -299,63 +299,14 @@ export function RegistrationForm({
       <h3 className="mt-2 font-display text-2xl font-black text-navy">{copy.formHeading}</h3>
       <div className="mt-5 h-[3px] w-14 bg-gold" />
 
-      {mode === "waitlist" ? (
+           {mode === "waitlist" ? (
         <p className="mt-6 font-serif text-[16px] leading-relaxed text-ink/70">
-          Both arrive immediately, at no cost. Tell me which one you want first &mdash; you will
-          receive the other as well. You will also be first to know when the live session is
-          scheduled.
+          It arrives immediately, at no cost. You will also be first to know when the live
+          session is scheduled.
         </p>
       ) : null}
 
-      {/* Which resource matters more to them. Everyone receives both; this tells
-          Tabitha what each person actually came for. */}
-      <fieldset className="mt-7">
-        <legend className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/60">
-          Which would you like first?
-        </legend>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {RESOURCES.map(item => {
-            const active = resource === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setResource(item.id)}
-                aria-pressed={active}
-                className={cn(
-                  "flex flex-col border p-4 text-left transition-all duration-200",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2",
-                  active
-                    ? "border-gold bg-gold-tint"
-                    : "border-border bg-white hover:border-gold/60",
-                )}>
-                <div className="flex items-start justify-between gap-2">
-                  <p
-                    className={cn(
-                      "font-display text-[15px] font-bold leading-tight",
-                      active ? "text-navy" : "text-ink/80",
-                    )}>
-                    {item.label}
-                  </p>
-                  <span
-                    className={cn(
-                      "mt-0.5 flex size-4 shrink-0 items-center justify-center border",
-                      active ? "border-gold bg-gold" : "border-input",
-                    )}>
-                    {active ? <Check className="size-2.5 text-ink" strokeWidth={3.5} /> : null}
-                  </span>
-                </div>
-                <p className="mt-1.5 font-sans text-[9.5px] uppercase tracking-[0.14em] text-ink/40">
-                  {item.meta}
-                </p>
-                <p className="mt-2 font-serif text-[14px] leading-snug text-ink/65">
-                  {item.forWho}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
+      
 
       <form onSubmit={handleSubmit} noValidate className="mt-7 space-y-5">
         {fields.map(field => {
