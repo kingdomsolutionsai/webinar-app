@@ -1,5 +1,3 @@
-
-Db updated · TS
 import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -397,4 +395,3 @@ export async function releaseSequenceStep(email: string, step: number) {
     console.error("[Sequence] Could not release step:", error);
   }
 }
- 
