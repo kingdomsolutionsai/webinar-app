@@ -1,3 +1,5 @@
+
+Routers updated · TS
 import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -13,9 +15,11 @@ import {
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { sendEmail, sendSignupEmails } from "./email";
+import { confirmUrl, verifyConfirm } from "./confirm";
+import { sendConfirmEmail, sendEmail, sendSignupEmails } from "./email";
 import {
   claimSequenceStep,
+  confirmRegistration,
   createRegistration,
   finishSequenceStep,
   getAllEventSettings,
@@ -40,7 +44,6 @@ import {
   SEQUENCE_SCHEDULE,
 } from "./sequence";
 import { unsubscribeUrl, verifyUnsubscribe } from "./unsubscribe";
-
 /** Only the project owner may read registrations or edit event details. */
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") {
@@ -48,13 +51,11 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   }
   return next({ ctx });
 });
-
 const nameField = z
   .string()
   .trim()
   .min(1, "Required")
   .max(120, "Please use 120 characters or fewer");
-
 const registrationInput = z.object({
   firstName: nameField,
   lastName: nameField,
@@ -68,7 +69,6 @@ const registrationInput = z.object({
   /** Which free resource the visitor asked for. */
   resource: z.enum(["chapter", "checklist", "both"]).nullish(),
 });
-
 function toCsv(
   rows: {
     firstName: string;
@@ -110,7 +110,6 @@ function toCsv(
   );
   return [header.map(escape).join(","), ...body].join("\r\n");
 }
-
 /**
  * Public base URL for this request, used to build absolute links in email.
  * Behind the managed runtime the original scheme arrives via x-forwarded-proto.
@@ -121,7 +120,6 @@ function resolveBaseUrl(req: { protocol?: string; headers: Record<string, unknow
   const host = String(req.headers.host ?? "").trim();
   return host ? `${proto}://${host}` : "";
 }
-
 /** Counted links for both resources, used in every outbound email. */
 function trackedUrlsFor(baseUrl: string, email: string) {
   return {
@@ -129,7 +127,6 @@ function trackedUrlsFor(baseUrl: string, email: string) {
     checklist: trackedDownloadUrl(baseUrl, "checklist", email),
   };
 }
-
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
@@ -143,9 +140,14 @@ export const appRouter = router({
       } as const;
     }),
   }),
-
   registration: router({
-    /** Public signup. Stores the row with a submission timestamp. */
+    /**
+     * Public signup. Stores the row with a submission timestamp, then sends
+     * only the double opt-in confirmation link — never the checklist itself.
+     * The checklist, the exercise-prompt email, and the owner notification all
+     * wait for `registration.confirm`, so an address that is never clicked is
+     * never treated as a verified lead.
+     */
     create: publicProcedure.input(registrationInput).mutation(async ({ input, ctx }) => {
       const row = await createRegistration({
         firstName: input.firstName,
@@ -154,11 +156,9 @@ export const appRouter = router({
         track: input.track ?? null,
         resource: input.resource ?? null,
       });
-
-      // Deliver the resources and the exercise prompt. Wrapped so that no mail
-      // failure can turn a successful signup into an error for someone who has
-      // already typed their details — they still see the confirmation panel and
-      // its download links either way.
+      // Wrapped so that no mail failure can turn a successful signup into an
+      // error for someone who has already typed their details — they still see
+      // the "check your email" confirmation panel either way.
       let emailed = false;
       // Resolved once and reused, so the confirmation panel and the email agree
       // on the same address. Behind the managed runtime the request host is an
@@ -174,25 +174,20 @@ export const appRouter = router({
         if (await isUnsubscribed(input.email)) {
           await setRegistrationEmailStatus(input.email, "skipped", "Recipient has unsubscribed");
         } else {
-          const result = await sendSignupEmails({
+          const result = await sendConfirmEmail({
             firstName: row?.firstName ?? input.firstName,
             lastName: row?.lastName ?? input.lastName,
             email: input.email,
-            track: input.track ?? null,
-            resource: input.resource ?? null,
-            baseUrl,
+            confirmUrl: confirmUrl(baseUrl, input.email),
             logoUrl: baseUrl ? `${baseUrl}${LION_MARK_URL}` : undefined,
-            unsubscribeUrl: unsubscribeUrl(baseUrl, input.email),
-            trackedUrls: trackedUrlsFor(baseUrl, input.email),
           });
-
           emailed = result.ok;
           await setRegistrationEmailStatus(
             input.email,
             result.ok ? "sent" : "failed",
             result.ok ? result.messageId : result.error,
           );
-          if (!result.ok) console.error("[Email] Delivery failed:", result.error);
+          if (!result.ok) console.error("[Email] Confirmation send failed:", result.error);
         }
       } catch (error) {
         console.error("[Email] Unexpected send error:", error);
@@ -202,19 +197,77 @@ export const appRouter = router({
           error instanceof Error ? error.message : "Unknown error",
         );
       }
-
       return {
         success: true as const,
         firstName: row?.firstName ?? input.firstName,
         emailed,
-        // Counted links, so an open from the confirmation panel is recorded the
-        // same way as an open from the email.
-        downloads: trackedUrlsFor(linkBaseUrl, input.email),
       };
     }),
-
+    /**
+     * Public double opt-in confirmation, reached from the link in the
+     * confirmation email. No login: the signed token proves the click came from
+     * an email we actually sent, so one address can never confirm another.
+     *
+     * The checklist and the owner notification are sent from here, the first
+     * time only — `confirmRegistration` reports whether this address was
+     * already confirmed, so a second click (or a slow double-click) can never
+     * produce a duplicate delivery.
+     */
+    confirm: publicProcedure
+      .input(z.object({ email: z.string().email(), token: z.string().min(8) }))
+      .mutation(async ({ input, ctx }) => {
+        if (!verifyConfirm(input.email, input.token)) {
+          return { ok: false as const, reason: "invalid" as const };
+        }
+        const { row, alreadyConfirmed } = await confirmRegistration(input.email);
+        if (!row) {
+          return { ok: false as const, reason: "not_found" as const };
+        }
+        const stored = await getAllEventSettings();
+        const baseUrl = resolveEmailBaseUrl(stored[PUBLIC_URL_KEY], resolveBaseUrl(ctx.req));
+        if (!alreadyConfirmed) {
+          try {
+            if (await isUnsubscribed(row.email)) {
+              await setRegistrationEmailStatus(row.email, "skipped", "Recipient has unsubscribed");
+            } else {
+              const result = await sendSignupEmails({
+                firstName: row.firstName,
+                lastName: row.lastName,
+                email: row.email,
+                track: row.track,
+                resource: (row.resource ?? null) as never,
+                baseUrl,
+                logoUrl: baseUrl ? `${baseUrl}${LION_MARK_URL}` : undefined,
+                unsubscribeUrl: unsubscribeUrl(baseUrl, row.email),
+                trackedUrls: trackedUrlsFor(baseUrl, row.email),
+              });
+              await setRegistrationEmailStatus(
+                row.email,
+                result.ok ? "sent" : "failed",
+                result.ok ? result.messageId : result.error,
+              );
+              if (!result.ok) console.error("[Email] Delivery failed:", result.error);
+            }
+          } catch (error) {
+            console.error("[Email] Unexpected send error:", error);
+            await setRegistrationEmailStatus(
+              row.email,
+              "failed",
+              error instanceof Error ? error.message : "Unknown error",
+            );
+          }
+        }
+        return {
+          ok: true as const,
+          firstName: row.firstName,
+          track: row.track,
+          alreadyConfirmed,
+          // Counted link, so an open from the confirm page is recorded the same
+          // way as an open from the delivery email.
+          downloads: trackedUrlsFor(baseUrl, row.email),
+        };
+      }),
     list: adminProcedure.query(() => listRegistrations()),
-
     /**
      * Public opt-out. No login, because the link is clicked from a mail client.
      * The signed token proves the request came from an email we sent, so one
@@ -233,7 +286,6 @@ export const appRouter = router({
           alreadyDone: Boolean(row?.unsubscribedAt),
         };
       }),
-
     /** Owner-only resend, for a delivery that failed or an address that asked again. */
     resend: adminProcedure
       .input(z.object({ email: z.string().email() }))
@@ -244,7 +296,9 @@ export const appRouter = router({
         if (row.unsubscribedAt) {
           return { ok: false as const, error: "This person has unsubscribed" };
         }
-
+        if (!row.confirmedAt) {
+          return { ok: false as const, error: "This person has not confirmed their email yet" };
+        }
         const stored = await getAllEventSettings();
         const baseUrl = resolveEmailBaseUrl(stored[PUBLIC_URL_KEY], resolveBaseUrl(ctx.req));
         const result = await sendSignupEmails({
@@ -258,7 +312,6 @@ export const appRouter = router({
           unsubscribeUrl: unsubscribeUrl(baseUrl, row.email),
           trackedUrls: trackedUrlsFor(baseUrl, row.email),
         });
-
         await setRegistrationEmailStatus(
           row.email,
           result.ok ? "sent" : "failed",
@@ -268,7 +321,6 @@ export const appRouter = router({
           ? { ok: true as const }
           : { ok: false as const, error: result.error };
       }),
-
     exportCsv: adminProcedure.query(async () => {
       const rows = await listRegistrations();
       const downloads = await listDownloads();
@@ -290,7 +342,6 @@ export const appRouter = router({
         count: rows.length,
       };
     }),
-
     /**
      * Per-person download activity for the dashboard: which resources each
      * address opened, and when it was last opened.
@@ -318,7 +369,6 @@ export const appRouter = router({
       }
       return Array.from(byEmail.entries()).map(([email, v]) => ({ email, ...v }));
     }),
-
     /**
      * Export in the column shape of the Lead Qualifier pipeline, so a webinar
      * audience can be imported without retyping. Kept separate from exportCsv,
@@ -364,7 +414,6 @@ export const appRouter = router({
       };
     }),
   }),
-
   /** The post-signup follow-up sequence. */
   sequence: router({
     /** Status overview: schedule, whether it is paused, and what has been sent. */
@@ -405,7 +454,6 @@ export const appRouter = router({
         total: sends.filter(s => s.status === "sent").length,
       };
     }),
-
     /** Pause or resume. Paused means the dispatcher returns without sending. */
     setPaused: adminProcedure
       .input(z.object({ paused: z.boolean() }))
@@ -413,7 +461,6 @@ export const appRouter = router({
         await setEventSetting(SEQUENCE_PAUSED_KEY, input.paused ? "true" : "false");
         return { success: true as const, paused: input.paused };
       }),
-
     /**
      * Owner-triggered run of whatever is currently due. The scheduler calls the
      * same code path, so this is a way to see the sequence work rather than a
@@ -424,7 +471,6 @@ export const appRouter = router({
       const baseUrl = resolveEmailBaseUrl(settings[PUBLIC_URL_KEY], resolveBaseUrl(ctx.req));
       return runSequenceDispatch({ baseUrl, settings });
     }),
-
     /**
      * Sends one letter to Tabitha herself so she can read it before it reaches
      * anyone else. Deliberately bypasses the ledger: a preview must never consume
@@ -469,14 +515,12 @@ export const appRouter = router({
           : { ok: false as const, error: result.error };
       }),
   }),
-
   settings: router({
     /** Public read so the landing page can show current event details. */
     get: publicProcedure.query(async () => {
       const stored = await getAllEventSettings();
       return { ...EVENT_DEFAULTS, ...stored };
     }),
-
     update: adminProcedure
       .input(
         z.object({
@@ -491,5 +535,5 @@ export const appRouter = router({
       }),
   }),
 });
-
 export type AppRouter = typeof appRouter;
+ 
