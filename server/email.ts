@@ -1,23 +1,24 @@
+
+Email updated · TS
 import {
   EXERCISE_PROMPT,
   MAIL_FROM,
   MAIL_OWNER,
   READINESS_CHECKLIST,
-  SAMPLE_CHAPTER,
   type ResourceChoice,
 } from "../shared/event";
-
 /**
  * Transactional email via Brevo.
  *
- * Two messages go out on each signup: the resources and exercise prompt to the
- * registrant, and a short notification to Tabitha. Neither is allowed to fail the
- * registration itself — a person who has already typed their details should never
- * see an error because a mail provider was slow.
+ * Three messages exist now: the double opt-in confirmation link (sent the
+ * moment someone signs up), the resource + exercise prompt email (sent only
+ * after that link is clicked), and a short notification to Tabitha (also sent
+ * only after confirmation, since an unconfirmed address is not yet a verified
+ * lead). None of these are allowed to fail the registration itself — a person
+ * who has already typed their details should never see an error because a
+ * mail provider was slow.
  */
-
 const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
-
 /* ------------------------------------------------------------------ *
  * Brand tokens. Inline styles only — email clients discard <style>.
  * ------------------------------------------------------------------ */
@@ -33,20 +34,16 @@ const C = {
   muted: "#6B6B6B",
   rule: "#E5E2D9",
 };
-
 const SERIF = "'EB Garamond', Georgia, 'Times New Roman', serif";
 const SANS = "'Montserrat', 'Helvetica Neue', Arial, sans-serif";
 const DISPLAY = "'Playfair Display', Georgia, serif";
-
 export type EmailResult =
   | { ok: true; messageId: string }
   | { ok: false; error: string };
-
 /** Absolute URL for a stored asset, needed because email cannot use root-relative paths. */
 function absolute(baseUrl: string, path: string) {
   return `${baseUrl.replace(/\/+$/, "")}${path}`;
 }
-
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
@@ -54,65 +51,28 @@ function escapeHtml(value: string) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
-
 /* ------------------------------------------------------------------ *
- * Registrant email
+ * Double opt-in confirmation email
  * ------------------------------------------------------------------ */
-export function buildRegistrantEmail(input: {
-  firstName: string;
-  resource: ResourceChoice | null;
-  baseUrl: string;
-  logoUrl?: string;
-  /** Opt-out URL. Omitted only in tests that do not exercise the footer. */
-  unsubscribeUrl?: string;
-  /**
-   * Counted download links, one per resource. When absent the raw file URLs are
-   * used, so a missing tracker can never produce a dead link.
-   */
-  trackedUrls?: { chapter: string; checklist: string };
-}) {
-  const { firstName, resource, baseUrl } = input;
-  const chapterUrl = input.trackedUrls?.chapter ?? absolute(baseUrl, SAMPLE_CHAPTER.url);
-  const checklistUrl = input.trackedUrls?.checklist ?? absolute(baseUrl, READINESS_CHECKLIST.url);
-  const checklistFirst = resource === "checklist";
-
-  const primary = checklistFirst
-    ? {
-        title: READINESS_CHECKLIST.title,
-        url: checklistUrl,
-        meta: `${READINESS_CHECKLIST.pages} pages \u00b7 ${READINESS_CHECKLIST.fields} fillable fields`,
-        blurb:
-          "Fourteen conditions to meet before you take money from a client, plus an eight-system scoring diagnostic. Type your answers straight into it and save the file \u2014 nothing to print.",
-        cta: "Download the checklist",
-      }
-    : {
-        title: SAMPLE_CHAPTER.title,
-        url: chapterUrl,
-        meta: `${SAMPLE_CHAPTER.pages} pages \u00b7 complete chapter`,
-        blurb:
-          "Six chapters and the Lincoln account: the eight systems every business runs on, why one weak system limits all the others, and the difference between a business and an expensive hobby.",
-        cta: "Download Part One",
-      };
-
-  const secondary = checklistFirst
-    ? { title: SAMPLE_CHAPTER.title, url: chapterUrl }
-    : { title: READINESS_CHECKLIST.title, url: checklistUrl };
-
-  const name = escapeHtml(firstName.trim() || "friend");
-
+/**
+ * The very first email a registrant gets. It delivers nothing except the
+ * confirm link — the checklist is not attached and not linked here, on
+ * purpose, so an unverified address can never receive the file.
+ */
+export function buildConfirmEmail(input: { firstName: string; confirmUrl: string; logoUrl?: string }) {
+  const name = escapeHtml(input.firstName.trim() || "friend");
   const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Your resources</title>
+<title>Confirm your email</title>
 </head>
 <body style="margin:0;padding:0;background-color:${C.goldTint};">
-<div style="display:none;font-size:1px;color:${C.goldTint};max-height:0;overflow:hidden;">Both files are inside, plus the one question worth four minutes.</div>
+<div style="display:none;font-size:1px;color:${C.goldTint};max-height:0;overflow:hidden;">One click and the checklist is on its way.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.goldTint};padding:28px 12px;">
 <tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:${C.paper};">
-
   <!-- Masthead -->
   <tr><td style="background-color:${C.ink};padding:30px 36px;text-align:center;">
     ${
@@ -124,19 +84,136 @@ export function buildRegistrantEmail(input: {
     <div style="font-family:${SERIF};font-size:14px;font-style:italic;color:#FFFFFF;opacity:0.72;margin-top:7px;">Leadership, clarity, and sustainable systems</div>
   </td></tr>
   <tr><td style="height:3px;background-color:${C.gold};line-height:3px;font-size:0;">&nbsp;</td></tr>
-
   <!-- Greeting -->
   <tr><td style="padding:38px 36px 0;">
-    <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">Both files are inside, ${name}.</h1>
+    <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">One click, ${name}, and it's on its way.</h1>
     <div style="width:52px;height:3px;background-color:${C.gold};margin:18px 0 0;"></div>
     <p style="margin:22px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
-      Nothing has been held back. Part One is the complete chapter as it appears in the book, and the checklist is the full instrument &mdash; not a sample of either.
-    </p>
-    <p style="margin:16px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
-      Before you open either one, I would like to give you the four minutes that matter most.
+      Please confirm this is your email address so I know the First-Sale Readiness Checklist is going somewhere real. Nothing else needs to happen &mdash; one click and the file is sent straight to this inbox.
     </p>
   </td></tr>
-
+  <!-- CTA -->
+  <tr><td style="padding:30px 36px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${C.gold};background-color:${C.goldTint};">
+      <tr><td style="padding:26px 28px;text-align:center;">
+        <p style="margin:0 0 18px;font-family:${DISPLAY};font-size:18px;line-height:1.3;font-weight:700;color:${C.navy};">${escapeHtml(READINESS_CHECKLIST.title)}</p>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+          <tr><td style="background-color:${C.ink};">
+            <a href="${input.confirmUrl}" style="display:inline-block;padding:14px 30px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${C.gold};text-decoration:none;">Confirm my email</a>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+    <p style="margin:16px 0 0;font-family:${SERIF};font-size:14px;line-height:1.6;color:${C.muted};">
+      If the button does not work, copy and paste this link into your browser:<br />
+      <a href="${input.confirmUrl}" style="color:${C.muted};word-break:break-all;">${escapeHtml(input.confirmUrl)}</a>
+    </p>
+  </td></tr>
+  <!-- Not you -->
+  <tr><td style="padding:26px 36px 0;">
+    <p style="margin:0;font-family:${SERIF};font-size:14px;line-height:1.6;color:${C.muted};">
+      If you did not request this, you can ignore this email and nothing further will happen.
+    </p>
+  </td></tr>
+  <!-- Signature -->
+  <tr><td style="padding:26px 36px 38px;">
+    <p style="margin:0;font-family:${SERIF};font-size:17px;line-height:1.6;color:${C.body};">Lead well,</p>
+    <p style="margin:14px 0 0;font-family:${DISPLAY};font-size:18px;font-weight:700;color:${C.navy};">Tabitha Rector</p>
+    <p style="margin:4px 0 0;font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#9A7B12;">Founder, Kingdom Solutions AI&trade;</p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+  const text = [
+    `One click, ${input.firstName.trim() || "friend"}, and it's on its way.`,
+    ``,
+    `Please confirm this is your email address so I know the First-Sale Readiness Checklist is going somewhere real. Nothing else needs to happen -- one click and the file is sent straight to this inbox.`,
+    ``,
+    `Confirm my email: ${input.confirmUrl}`,
+    ``,
+    `If you did not request this, you can ignore this email and nothing further will happen.`,
+    ``,
+    `Lead well,`,
+    `Tabitha Rector`,
+    `Founder, Kingdom Solutions AI(TM)`,
+  ].join("\n");
+  return { subject: "Confirm your email to get the checklist", html, text };
+}
+/** Sends the confirmation email. Never throws — same contract as sendEmail. */
+export async function sendConfirmEmail(input: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  confirmUrl: string;
+  logoUrl?: string;
+}): Promise<EmailResult> {
+  const message = buildConfirmEmail({
+    firstName: input.firstName,
+    confirmUrl: input.confirmUrl,
+    logoUrl: input.logoUrl,
+  });
+  return sendEmail({
+    to: { email: input.email, name: `${input.firstName} ${input.lastName}`.trim() },
+    subject: message.subject,
+    html: message.html,
+    text: message.text,
+    tags: ["confirm-email"],
+  });
+}
+/* ------------------------------------------------------------------ *
+ * Registrant email — sent only after the confirm link is clicked
+ * ------------------------------------------------------------------ */
+export function buildRegistrantEmail(input: {
+  firstName: string;
+  baseUrl: string;
+  logoUrl?: string;
+  /** Opt-out URL. Omitted only in tests that do not exercise the footer. */
+  unsubscribeUrl?: string;
+  /**
+   * Counted download link for the checklist. When absent the raw file URL is
+   * used, so a missing tracker can never produce a dead link.
+   */
+  trackedUrls?: { checklist: string };
+}) {
+  const { firstName, baseUrl } = input;
+  const checklistUrl = input.trackedUrls?.checklist ?? absolute(baseUrl, READINESS_CHECKLIST.url);
+  const name = escapeHtml(firstName.trim() || "friend");
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Your checklist</title>
+</head>
+<body style="margin:0;padding:0;background-color:${C.goldTint};">
+<div style="display:none;font-size:1px;color:${C.goldTint};max-height:0;overflow:hidden;">Your checklist is inside, plus the one question worth four minutes.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.goldTint};padding:28px 12px;">
+<tr><td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:${C.paper};">
+  <!-- Masthead -->
+  <tr><td style="background-color:${C.ink};padding:30px 36px;text-align:center;">
+    ${
+      input.logoUrl
+        ? `<img src="${input.logoUrl}" width="56" height="56" alt="Kingdom Solutions AI" style="display:block;margin:0 auto 14px;width:56px;height:56px;border:0;" />`
+        : ""
+    }
+    <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${C.gold};">Kingdom Solutions AI&trade;</div>
+    <div style="font-family:${SERIF};font-size:14px;font-style:italic;color:#FFFFFF;opacity:0.72;margin-top:7px;">Leadership, clarity, and sustainable systems</div>
+  </td></tr>
+  <tr><td style="height:3px;background-color:${C.gold};line-height:3px;font-size:0;">&nbsp;</td></tr>
+  <!-- Greeting -->
+  <tr><td style="padding:38px 36px 0;">
+    <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">Your checklist is inside, ${name}.</h1>
+    <div style="width:52px;height:3px;background-color:${C.gold};margin:18px 0 0;"></div>
+    <p style="margin:22px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
+      Nothing has been held back. This is the full instrument, not a sample of it.
+    </p>
+    <p style="margin:16px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
+      Before you open it, I would like to give you the four minutes that matter most.
+    </p>
+  </td></tr>
   <!-- The exercise -->
   <tr><td style="padding:26px 36px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.navy};">
@@ -159,35 +236,22 @@ export function buildRegistrantEmail(input: {
       There is a page at the back of the checklist for this sentence. It is the last page for a reason.
     </p>
   </td></tr>
-
-  <!-- Primary resource -->
+  <!-- The resource -->
   <tr><td style="padding:30px 36px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${C.gold};background-color:${C.goldTint};">
       <tr><td style="padding:26px 28px;">
         <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#9A7B12;">Ready now</div>
-        <p style="margin:11px 0 0;font-family:${DISPLAY};font-size:19px;line-height:1.3;font-weight:700;color:${C.navy};">${escapeHtml(primary.title)}</p>
-        <p style="margin:7px 0 0;font-family:${SANS};font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:${C.muted};">${escapeHtml(primary.meta)}</p>
-        <p style="margin:13px 0 0;font-family:${SERIF};font-size:16px;line-height:1.62;color:${C.body};">${escapeHtml(primary.blurb)}</p>
+        <p style="margin:11px 0 0;font-family:${DISPLAY};font-size:19px;line-height:1.3;font-weight:700;color:${C.navy};">${escapeHtml(READINESS_CHECKLIST.title)}</p>
+        <p style="margin:7px 0 0;font-family:${SANS};font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:${C.muted};">${READINESS_CHECKLIST.pages} pages · ${READINESS_CHECKLIST.fields} fillable fields</p>
+        <p style="margin:13px 0 0;font-family:${SERIF};font-size:16px;line-height:1.62;color:${C.body};">Fourteen conditions to meet before you take money from a client, plus an eight-system scoring diagnostic. Type your answers straight into it and save the file &mdash; nothing to print.</p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
           <tr><td style="background-color:${C.ink};">
-            <a href="${primary.url}" style="display:inline-block;padding:14px 26px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${C.gold};text-decoration:none;">${escapeHtml(primary.cta)}</a>
+            <a href="${checklistUrl}" style="display:inline-block;padding:14px 26px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${C.gold};text-decoration:none;">Download the checklist</a>
           </td></tr>
         </table>
       </td></tr>
     </table>
   </td></tr>
-
-  <!-- Secondary resource -->
-  <tr><td style="padding:12px 36px 0;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${C.rule};">
-      <tr><td style="padding:18px 24px;">
-        <div style="font-family:${SANS};font-size:9.5px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:${C.muted};">Also yours, at no cost</div>
-        <p style="margin:6px 0 0;font-family:${DISPLAY};font-size:16px;font-weight:700;color:${C.navy};">${escapeHtml(secondary.title)}</p>
-        <p style="margin:11px 0 0;"><a href="${secondary.url}" style="font-family:${SANS};font-size:10.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${C.navy};text-decoration:underline;">Download</a></p>
-      </td></tr>
-    </table>
-  </td></tr>
-
   <!-- Something coming -->
   <tr><td style="padding:30px 36px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -198,18 +262,16 @@ export function buildRegistrantEmail(input: {
       </td></tr>
     </table>
   </td></tr>
-
   <!-- Signature -->
   <tr><td style="padding:32px 36px 38px;">
     <p style="margin:0;font-family:${SERIF};font-size:17px;line-height:1.6;color:${C.body};">Lead well,</p>
     <p style="margin:14px 0 0;font-family:${DISPLAY};font-size:18px;font-weight:700;color:${C.navy};">Tabitha Rector</p>
     <p style="margin:4px 0 0;font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#9A7B12;">Founder, Kingdom Solutions AI&trade;</p>
   </td></tr>
-
   <!-- Footer -->
   <tr><td style="background-color:${C.ink};padding:22px 36px;text-align:center;">
     <p style="margin:0;font-family:${SANS};font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.5);">
-      You are receiving this because you requested these resources.
+      You are receiving this because you requested this resource and confirmed your email.
     </p>
     <p style="margin:8px 0 0;font-family:${SANS};font-size:10px;letter-spacing:1.5px;text-transform:uppercase;">
       <a href="${escapeHtml(baseUrl)}" style="color:${C.gold};text-decoration:none;">kingdomsolutionsai.com</a>
@@ -222,19 +284,17 @@ export function buildRegistrantEmail(input: {
         : ""
     }
   </td></tr>
-
 </table>
 </td></tr>
 </table>
 </body>
 </html>`;
-
   const text = [
-    `Both files are inside, ${firstName.trim() || "friend"}.`,
+    `Your checklist is inside, ${firstName.trim() || "friend"}.`,
     ``,
-    `Nothing has been held back. Part One is the complete chapter as it appears in the book, and the checklist is the full instrument -- not a sample of either.`,
+    `Nothing has been held back. This is the full instrument, not a sample of it.`,
     ``,
-    `Before you open either one, here are the four minutes that matter most.`,
+    `Before you open it, here are the four minutes that matter most.`,
     ``,
     EXERCISE_PROMPT.heading.toUpperCase(),
     EXERCISE_PROMPT.instruction,
@@ -245,9 +305,8 @@ export function buildRegistrantEmail(input: {
     ``,
     `There is a page at the back of the checklist for this sentence. It is the last page for a reason.`,
     ``,
-    `YOUR RESOURCES`,
-    `${primary.title}: ${primary.url}`,
-    `${secondary.title}: ${secondary.url}`,
+    `YOUR RESOURCE`,
+    `${READINESS_CHECKLIST.title}: ${checklistUrl}`,
     ``,
     `One more thing. I am preparing something for the people on this list, and you will hear about it here first. More soon.`,
     ``,
@@ -259,16 +318,12 @@ export function buildRegistrantEmail(input: {
       ? ["", `To stop receiving these emails: ${input.unsubscribeUrl}`]
       : []),
   ].join("\n");
-
   return {
-    subject: checklistFirst
-      ? "Your checklist and chapter are inside"
-      : "Your chapter and checklist are inside",
+    subject: "Your checklist is inside",
     html,
     text,
   };
 }
-
 /* ------------------------------------------------------------------ *
  * Owner notification
  * ------------------------------------------------------------------ */
@@ -289,7 +344,6 @@ export function buildOwnerEmail(input: {
     ["Received", new Date().toLocaleString("en-US", { timeZone: "America/New_York" })],
   ];
   if (typeof input.total === "number") rows.push(["Total signups", String(input.total)]);
-
   const html = `<!doctype html>
 <html><body style="margin:0;padding:24px;background-color:#F5F3EC;">
 <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:560px;margin:0 auto;background-color:#FFFFFF;border:1px solid ${C.rule};">
@@ -316,16 +370,13 @@ export function buildOwnerEmail(input: {
   </td></tr>
 </table>
 </body></html>`;
-
   const text = rows.map(([k, v]) => `${k}: ${v}`).join("\n");
-
   return {
     subject: `New signup: ${input.firstName} ${input.lastName}`.trim(),
     html,
     text,
   };
 }
-
 /* ------------------------------------------------------------------ *
  * Send
  * ------------------------------------------------------------------ */
@@ -345,7 +396,6 @@ export async function sendEmail(input: {
 }): Promise<EmailResult> {
   const key = process.env.BREVO_API_KEY;
   if (!key) return { ok: false, error: "BREVO_API_KEY is not configured" };
-
   try {
     const response = await fetch(BREVO_ENDPOINT, {
       method: "POST",
@@ -372,22 +422,21 @@ export async function sendEmail(input: {
           : {}),
       }),
     });
-
     if (!response.ok) {
       const body = await response.text();
       return { ok: false, error: `HTTP ${response.status}: ${body.slice(0, 200)}` };
     }
-
     const data = (await response.json()) as { messageId?: string };
     return { ok: true, messageId: data.messageId ?? "sent" };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Unknown send error" };
   }
 }
-
 /**
- * Fire both signup emails. Never throws: the caller's registration must succeed
- * regardless of what the mail provider does.
+ * Fire the resource-delivery email plus the owner notification. Called only
+ * once an address has confirmed via the double opt-in link — never at raw
+ * signup. Never throws: bookkeeping and notification must not take down a
+ * confirmation that already succeeded.
  */
 export async function sendSignupEmails(input: {
   firstName: string;
@@ -399,17 +448,15 @@ export async function sendSignupEmails(input: {
   logoUrl?: string;
   total?: number;
   unsubscribeUrl?: string;
-  trackedUrls?: { chapter: string; checklist: string };
+  trackedUrls?: { checklist: string };
 }): Promise<EmailResult> {
   const registrant = buildRegistrantEmail({
     firstName: input.firstName,
-    resource: input.resource,
     baseUrl: input.baseUrl,
     logoUrl: input.logoUrl,
     unsubscribeUrl: input.unsubscribeUrl,
     trackedUrls: input.trackedUrls,
   });
-
   const result = await sendEmail({
     to: { email: input.email, name: `${input.firstName} ${input.lastName}`.trim() },
     subject: registrant.subject,
@@ -419,7 +466,6 @@ export async function sendSignupEmails(input: {
     // Lets Gmail and Outlook offer their own one-click unsubscribe control.
     unsubscribeUrl: input.unsubscribeUrl,
   });
-
   // Owner notification is best-effort and must not affect the reported outcome.
   const owner = buildOwnerEmail({ ...input });
   void sendEmail({
@@ -431,6 +477,6 @@ export async function sendSignupEmails(input: {
     replyTo: { email: input.email, name: `${input.firstName} ${input.lastName}`.trim() },
     tags: ["owner-notification"],
   }).catch(() => undefined);
-
   return result;
 }
+ 
