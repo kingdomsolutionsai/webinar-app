@@ -346,7 +346,7 @@ export const appRouter = router({
      */
     downloads: adminProcedure.query(async () => {
       const rows = await listDownloads();
-      const byEmail = new Map
+      const byEmail = new Map<
         string,
         { resources: string[]; count: number; lastAt: Date }
       >();
@@ -374,7 +374,7 @@ export const appRouter = router({
      */
     exportPipelineCsv: adminProcedure.query(async () => {
       const rows = await listDownloads();
-      const byEmail = new Map
+      const byEmail = new Map<
         string,
         { resources: string[]; count: number; lastAt: Date }
       >();
@@ -534,3 +534,6 @@ export const appRouter = router({
   }),
 });
 export type AppRouter = typeof appRouter;
+ 
+
+
