@@ -196,6 +196,17 @@ export type SequenceContext = {
   replayUrl?: string;
   /** True when this person has not opened either resource yet. */
   hasDownloaded?: boolean;
+  /**
+   * True only once Tabitha has marked this person attended on the dashboard.
+   * Used solely by letter six (seven days after the session — plenty of time
+   * for attendance to have been marked). Letter four deliberately does NOT
+   * branch on this: it goes out just 14 hours after the session, often before
+   * attendance has been marked yet, so treating an actual attendee as a
+   * no-show there would be a real risk. The checklist itself is never sent by
+   * the day-based schedule at all — only by the dedicated attendance-reward
+   * email, fired the moment Tabitha marks someone attended.
+   */
+  attended?: boolean;
 };
 
 /** Letter one, day two: the promised heads-up, and a nudge to actually open the file. */
@@ -255,7 +266,11 @@ export function buildSequenceStepOne(ctx: SequenceContext) {
 /** Letter two, day seven: the exercise, revisited — the highest-value four minutes. */
 export function buildSequenceStepTwo(ctx: SequenceContext) {
   const name = escapeHtml(ctx.firstName.trim() || "friend");
-  const checklistUrl = trackedDownloadUrl(ctx.baseUrl, "checklist", ctx.email);
+  const hasDate = !isPlaceholder(ctx.eventDate);
+  const chapterUrl = trackedDownloadUrl(ctx.baseUrl, "chapter", ctx.email);
+  const cta = hasDate
+    ? { label: "Reserve your seat", url: ctx.baseUrl }
+    : { label: "Revisit Part One", url: chapterUrl };
 
   const body = [
     paragraph(
@@ -273,9 +288,9 @@ export function buildSequenceStepTwo(ctx: SequenceContext) {
       `If you cannot write it yet, that is not a failure. That is your diagnosis.`,
     ),
     paragraph(
-      `The checklist has a page at the back for this sentence, and it is the last page for a reason. Everything before it exists to make that sentence possible.`,
+      `At the live session, I will hand you a page built for exactly this sentence — the First-Sale Readiness Checklist, yours the moment you show up. For now, just keep the sentence where you can find it.`,
     ),
-    buttonRow("Open the checklist", checklistUrl),
+    buttonRow(cta.label, cta.url),
     postscriptRow(
       `P.S. — ${AUDIT_INVITATION.postscript}`,
       "Take the Capacity Leak Audit\u2122",
@@ -295,7 +310,9 @@ export function buildSequenceStepTwo(ctx: SequenceContext) {
     ``,
     `If you cannot write it yet, that is not a failure. That is your diagnosis.`,
     ``,
-    `The checklist has a page at the back for this sentence: ${checklistUrl}`,
+    `At the live session, I will hand you a page built for exactly this sentence -- the First-Sale Readiness Checklist, yours the moment you show up. For now, just keep the sentence where you can find it.`,
+    ``,
+    `${cta.label}: ${cta.url}`,
     ``,
     `P.S. -- ${AUDIT_INVITATION.postscript}`,
     AUDIT_INVITATION.url,
@@ -329,6 +346,7 @@ export function buildSequenceStepTwo(ctx: SequenceContext) {
 export function buildSequenceStepThree(ctx: SequenceContext) {
   const name = escapeHtml(ctx.firstName.trim() || "friend");
   const hasDate = !isPlaceholder(ctx.eventDate);
+  const chapterUrl = trackedDownloadUrl(ctx.baseUrl, "chapter", ctx.email);
   const when = hasDate
     ? [ctx.eventDate, ctx.eventTime].filter(v => v && !isPlaceholder(v)).join(" at ")
     : "";
@@ -348,16 +366,16 @@ export function buildSequenceStepThree(ctx: SequenceContext) {
       ].join("")
     : [
         paragraph(
-          `Two weeks ago you asked for the chapter and the checklist, ${name}, and I promised you would hear about the live session before anyone else.`,
+          `Two weeks ago you asked for Part One, ${name}, and I promised you would hear about the live session before anyone else.`,
         ),
         paragraph(
           `I am holding to that. The date is not fixed yet, and I would rather tell you that plainly than send you an invitation to something I cannot yet deliver. When it is set, this list hears first.`,
         ),
         paragraph(
-          `In the meantime, both resources remain yours, and the one-sentence exercise is still the most valuable four minutes available to you. If you have written that sentence, you are further along than most.`,
+          `In the meantime, Part One remains yours, and the one-sentence exercise is still the most valuable four minutes available to you. The Readiness Checklist is waiting too — it is my thank-you for showing up when the session happens.`,
         ),
         pullQuote(escapeHtml(CORE_PROMISE_SHORT)),
-        buttonRow("Revisit the resources", ctx.baseUrl),
+        buttonRow("Revisit Part One", chapterUrl),
       ].join("");
 
   const text = hasDate
@@ -373,15 +391,15 @@ export function buildSequenceStepThree(ctx: SequenceContext) {
         `Reserve your seat: ${ctx.baseUrl}`,
       ].join("\n")
     : [
-        `Two weeks ago you asked for the chapter and the checklist, and I promised you would hear about the live session first.`,
+        `Two weeks ago you asked for Part One, and I promised you would hear about the live session first.`,
         ``,
         `The date is not fixed yet, and I would rather tell you plainly than send an invitation to something I cannot yet deliver. When it is set, this list hears first.`,
         ``,
-        `Both resources remain yours, and the one-sentence exercise is still the most valuable four minutes available to you.`,
+        `Part One remains yours, and the one-sentence exercise is still the most valuable four minutes available to you. The Readiness Checklist is waiting too -- my thank-you for showing up when the session happens.`,
         ``,
         CORE_PROMISE_SHORT,
         ``,
-        ctx.baseUrl,
+        `Revisit Part One: ${chapterUrl}`,
       ].join("\n");
 
   return {
@@ -486,14 +504,15 @@ export function buildPostSessionLetter(ctx: SequenceContext) {
 export function buildFinalLetter(ctx: SequenceContext) {
   const name = escapeHtml(ctx.firstName.trim() || "friend");
   const chapterUrl = trackedDownloadUrl(ctx.baseUrl, "chapter", ctx.email);
+  const remainsYours = ctx.attended
+    ? `Nothing here expires. The chapter and the checklist remain yours, the audit will still be there in six months, and if you come back a year from now with a different question, I will still answer it.`
+    : `Nothing here expires. Part One remains yours, the audit will still be there in six months, and if a future session comes around, the checklist will be waiting for you there too.`;
 
   const body = [
     paragraph(
       `This is the last of these letters, ${name}. I would rather tell you that than keep arriving in your inbox indefinitely — you are carrying enough.`,
     ),
-    paragraph(
-      `Nothing here expires. The chapter and the checklist remain yours, the audit will still be there in six months, and if you come back a year from now with a different question, I will still answer it.`,
-    ),
+    paragraph(remainsYours),
     pullQuote(escapeHtml(CORE_PROMISE_SHORT)),
     paragraph(
       `What I hope you take from all of this is not a system or a tool. It is the conviction that building something worthwhile does not require you to run yourself into the ground first. That was the lie I believed, and it cost me a season I would rather not repeat.`,
@@ -512,7 +531,7 @@ export function buildFinalLetter(ctx: SequenceContext) {
   const text = [
     `This is the last of these letters. I would rather tell you that than keep arriving in your inbox indefinitely -- you are carrying enough.`,
     ``,
-    `Nothing here expires. The chapter and the checklist remain yours, the audit will still be there in six months, and if you come back a year from now with a different question, I will still answer it.`,
+    remainsYours,
     ``,
     CORE_PROMISE_SHORT,
     ``,
@@ -554,11 +573,17 @@ export function buildFinalLetter(ctx: SequenceContext) {
  *
  * The exercise is restated in full either way, because it is the single action
  * the session asked for, and someone who missed the session has never seen it.
+ *
+ * Deliberately says nothing about the checklist and does not branch on
+ * attendance. This letter fires 14 hours after the session — often before
+ * Tabitha has had a chance to mark attendance on the dashboard — so treating
+ * an actual attendee as a no-show here would be a real risk. The checklist is
+ * handled entirely separately: it goes out the moment attendance is marked,
+ * via its own dedicated email, whenever that happens to be.
  */
 export function buildReplayLetter(ctx: SequenceContext) {
   const name = escapeHtml(ctx.firstName.trim() || "friend");
   const hasReplay = Boolean(ctx.replayUrl && ctx.replayUrl.trim());
-  const checklistUrl = trackedDownloadUrl(ctx.baseUrl, "checklist", ctx.email);
 
   const opening = hasReplay
     ? paragraph(
@@ -581,9 +606,8 @@ export function buildReplayLetter(ctx: SequenceContext) {
     paragraph(escapeHtml(EXERCISE_PROMPT.reframe)),
     pullQuote(escapeHtml(CORE_PROMISE_SHORT)),
     paragraph(
-      `The checklist has a page at the back for that sentence. If you write nothing else this week, write that.`,
+      `If you attended, your checklist is either already in your inbox or on its way — that is handled separately, so there is no link to hunt for here. If you write nothing else this week, write that sentence.`,
     ),
-    buttonRow("Open the checklist", checklistUrl),
     postscriptRow(
       `P.S. — ${AUDIT_INVITATION.postscript}`,
       "Take the Capacity Leak Audit\u2122",
@@ -606,7 +630,7 @@ export function buildReplayLetter(ctx: SequenceContext) {
     ``,
     CORE_PROMISE_SHORT,
     ``,
-    `The checklist has a page at the back for that sentence: ${checklistUrl}`,
+    `If you attended, your checklist is either already in your inbox or on its way -- that is handled separately, so there is no link to hunt for here. If you write nothing else this week, write that sentence.`,
     ``,
     `P.S. -- ${AUDIT_INVITATION.postscript}`,
     AUDIT_INVITATION.url,
@@ -841,6 +865,7 @@ export async function runSequenceDispatch(input: {
       eventDate: input.settings.date,
       eventTime: input.settings.time,
       replayUrl: input.settings.replayUrl,
+      attended: Boolean(person.attendedAt),
     };
 
     const letter = buildSequenceEmail(chosenStep, ctx);

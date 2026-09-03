@@ -236,6 +236,46 @@ export async function isUnsubscribed(email: string): Promise<boolean> {
     .limit(1);
   return Boolean(rows[0]?.unsubscribedAt);
 }
+/**
+ * Marks an address as having actually attended the live session. This is what
+ * the Readiness Checklist delivery is gated on — nobody receives the checklist
+ * until this is set, and it is only ever set by Tabitha from the dashboard,
+ * never automatically.
+ *
+ * `alreadyAttended` tells the caller whether this is the first time (so the
+ * checklist reward email should fire) or a repeat click, the same idempotency
+ * pattern already used by `confirmRegistration`.
+ */
+export async function markAttended(
+  email: string,
+): Promise<{ row: Registration | undefined; alreadyAttended: boolean }> {
+  const db = await getDb();
+  if (!db) return { row: undefined, alreadyAttended: false };
+  const key = email.trim().toLowerCase();
+  const existing = await db
+    .select()
+    .from(registrations)
+    .where(eq(registrations.email, key))
+    .limit(1);
+  const row = existing[0];
+  if (!row) return { row: undefined, alreadyAttended: false };
+  if (row.attendedAt) return { row, alreadyAttended: true };
+  const attendedAt = new Date();
+  await db.update(registrations).set({ attendedAt }).where(eq(registrations.email, key));
+  return { row: { ...row, attendedAt }, alreadyAttended: false };
+}
+/**
+ * Clears an attendance mark. Used only to correct a mis-click on the dashboard —
+ * it does not (and cannot) recall the checklist email if one already went out.
+ */
+export async function unmarkAttended(email: string): Promise<Registration | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const key = email.trim().toLowerCase();
+  await db.update(registrations).set({ attendedAt: null }).where(eq(registrations.email, key));
+  const rows = await db.select().from(registrations).where(eq(registrations.email, key)).limit(1);
+  return rows[0];
+}
 /* ------------------------------------------------------------------ *
  * Event settings (owner-editable placeholders)
  * ------------------------------------------------------------------ */

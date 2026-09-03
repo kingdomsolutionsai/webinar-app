@@ -3,18 +3,21 @@ import {
   MAIL_FROM,
   MAIL_OWNER,
   READINESS_CHECKLIST,
+  SAMPLE_CHAPTER,
   type ResourceChoice,
 } from "../shared/event";
 /**
  * Transactional email via Brevo.
  *
- * Three messages exist now: the double opt-in confirmation link (sent the
- * moment someone signs up), the resource + exercise prompt email (sent only
- * after that link is clicked), and a short notification to Tabitha (also sent
+ * Four messages exist now: the double opt-in confirmation link (sent the
+ * moment someone signs up), the Part One + exercise prompt email (sent only
+ * after that link is clicked), a short notification to Tabitha (also sent
  * only after confirmation, since an unconfirmed address is not yet a verified
- * lead). None of these are allowed to fail the registration itself — a person
- * who has already typed their details should never see an error because a
- * mail provider was slow.
+ * lead), and the checklist reward email (sent only once Tabitha marks someone
+ * attended on the dashboard — never automatically, and never to anyone who
+ * has not shown up). None of these are allowed to fail the registration
+ * itself — a person who has already typed their details should never see an
+ * error because a mail provider was slow.
  */
 const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 /* ------------------------------------------------------------------ *
@@ -54,8 +57,8 @@ function escapeHtml(value: string) {
  * ------------------------------------------------------------------ */
 /**
  * The very first email a registrant gets. It delivers nothing except the
- * confirm link — the checklist is not attached and not linked here, on
- * purpose, so an unverified address can never receive the file.
+ * confirm link — Part One is not attached and not linked here, on purpose, so
+ * an unverified address can never receive the file.
  */
 export function buildConfirmEmail(input: { firstName: string; confirmUrl: string; logoUrl?: string }) {
   const name = escapeHtml(input.firstName.trim() || "friend");
@@ -67,7 +70,7 @@ export function buildConfirmEmail(input: { firstName: string; confirmUrl: string
 <title>Confirm your email</title>
 </head>
 <body style="margin:0;padding:0;background-color:${C.goldTint};">
-<div style="display:none;font-size:1px;color:${C.goldTint};max-height:0;overflow:hidden;">One click and the checklist is on its way.</div>
+<div style="display:none;font-size:1px;color:${C.goldTint};max-height:0;overflow:hidden;">One click and Part One is on its way.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.goldTint};padding:28px 12px;">
 <tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:${C.paper};">
@@ -87,14 +90,14 @@ export function buildConfirmEmail(input: { firstName: string; confirmUrl: string
     <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">One click, ${name}, and it's on its way.</h1>
     <div style="width:52px;height:3px;background-color:${C.gold};margin:18px 0 0;"></div>
     <p style="margin:22px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
-      Please confirm this is your email address so I know the First-Sale Readiness Checklist is going somewhere real. Nothing else needs to happen &mdash; one click and the file is sent straight to this inbox.
+      Please confirm this is your email address so I know Part One of the book is going somewhere real. Nothing else needs to happen &mdash; one click and the file is sent straight to this inbox.
     </p>
   </td></tr>
   <!-- CTA -->
   <tr><td style="padding:30px 36px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${C.gold};background-color:${C.goldTint};">
       <tr><td style="padding:26px 28px;text-align:center;">
-        <p style="margin:0 0 18px;font-family:${DISPLAY};font-size:18px;line-height:1.3;font-weight:700;color:${C.navy};">${escapeHtml(READINESS_CHECKLIST.title)}</p>
+        <p style="margin:0 0 18px;font-family:${DISPLAY};font-size:18px;line-height:1.3;font-weight:700;color:${C.navy};">${escapeHtml(SAMPLE_CHAPTER.title)}</p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
           <tr><td style="background-color:${C.ink};">
             <a href="${input.confirmUrl}" style="display:inline-block;padding:14px 30px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${C.gold};text-decoration:none;">Confirm my email</a>
@@ -127,7 +130,7 @@ export function buildConfirmEmail(input: { firstName: string; confirmUrl: string
   const text = [
     `One click, ${input.firstName.trim() || "friend"}, and it's on its way.`,
     ``,
-    `Please confirm this is your email address so I know the First-Sale Readiness Checklist is going somewhere real. Nothing else needs to happen -- one click and the file is sent straight to this inbox.`,
+    `Please confirm this is your email address so I know Part One of the book is going somewhere real. Nothing else needs to happen -- one click and the file is sent straight to this inbox.`,
     ``,
     `Confirm my email: ${input.confirmUrl}`,
     ``,
@@ -137,7 +140,7 @@ export function buildConfirmEmail(input: { firstName: string; confirmUrl: string
     `Tabitha Rector`,
     `Founder, Kingdom Solutions AI(TM)`,
   ].join("\n");
-  return { subject: "Confirm your email to get the checklist", html, text };
+  return { subject: "Confirm your email for Part One", html, text };
 }
 /** Sends the confirmation email. Never throws — same contract as sendEmail. */
 export async function sendConfirmEmail(input: {
@@ -170,23 +173,23 @@ export function buildRegistrantEmail(input: {
   /** Opt-out URL. Omitted only in tests that do not exercise the footer. */
   unsubscribeUrl?: string;
   /**
-   * Counted download link for the checklist. When absent the raw file URL is
+   * Counted download link for Part One. When absent the raw file URL is
    * used, so a missing tracker can never produce a dead link.
    */
-  trackedUrls?: { checklist: string };
+  trackedUrls?: { chapter: string; checklist?: string };
 }) {
   const { firstName, baseUrl } = input;
-  const checklistUrl = input.trackedUrls?.checklist ?? absolute(baseUrl, READINESS_CHECKLIST.url);
+  const chapterUrl = input.trackedUrls?.chapter ?? absolute(baseUrl, SAMPLE_CHAPTER.url);
   const name = escapeHtml(firstName.trim() || "friend");
   const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Your checklist</title>
+<title>Part One is inside</title>
 </head>
 <body style="margin:0;padding:0;background-color:${C.goldTint};">
-<div style="display:none;font-size:1px;color:${C.goldTint};max-height:0;overflow:hidden;">Your checklist is inside, plus the one question worth four minutes.</div>
+<div style="display:none;font-size:1px;color:${C.goldTint};max-height:0;overflow:hidden;">Part One is inside, plus the one question worth four minutes.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.goldTint};padding:28px 12px;">
 <tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:${C.paper};">
@@ -203,10 +206,10 @@ export function buildRegistrantEmail(input: {
   <tr><td style="height:3px;background-color:${C.gold};line-height:3px;font-size:0;">&nbsp;</td></tr>
   <!-- Greeting -->
   <tr><td style="padding:38px 36px 0;">
-    <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">Your checklist is inside, ${name}.</h1>
+    <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">Part One is inside, ${name}.</h1>
     <div style="width:52px;height:3px;background-color:${C.gold};margin:18px 0 0;"></div>
     <p style="margin:22px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
-      Nothing has been held back. This is the full instrument, not a sample of it.
+      Nothing has been held back. This is the complete, unabridged chapter — not a teaser.
     </p>
     <p style="margin:16px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
       Before you open it, I would like to give you the four minutes that matter most.
@@ -231,7 +234,7 @@ export function buildRegistrantEmail(input: {
       </td></tr>
     </table>
     <p style="margin:16px 0 0;font-family:${SERIF};font-size:16px;line-height:1.6;color:${C.muted};">
-      There is a page at the back of the checklist for this sentence. It is the last page for a reason.
+      At the live session, I will hand you a page built for exactly this sentence — the First-Sale Readiness Checklist. It is yours the moment you show up.
     </p>
   </td></tr>
   <!-- The resource -->
@@ -239,12 +242,12 @@ export function buildRegistrantEmail(input: {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${C.gold};background-color:${C.goldTint};">
       <tr><td style="padding:26px 28px;">
         <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#9A7B12;">Ready now</div>
-        <p style="margin:11px 0 0;font-family:${DISPLAY};font-size:19px;line-height:1.3;font-weight:700;color:${C.navy};">${escapeHtml(READINESS_CHECKLIST.title)}</p>
-        <p style="margin:7px 0 0;font-family:${SANS};font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:${C.muted};">${READINESS_CHECKLIST.pages} pages · ${READINESS_CHECKLIST.fields} fillable fields</p>
-        <p style="margin:13px 0 0;font-family:${SERIF};font-size:16px;line-height:1.62;color:${C.body};">Fourteen conditions to meet before you take money from a client, plus an eight-system scoring diagnostic. Type your answers straight into it and save the file &mdash; nothing to print.</p>
+        <p style="margin:11px 0 0;font-family:${DISPLAY};font-size:19px;line-height:1.3;font-weight:700;color:${C.navy};">${escapeHtml(SAMPLE_CHAPTER.title)}</p>
+        <p style="margin:7px 0 0;font-family:${SANS};font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:${C.muted};">${SAMPLE_CHAPTER.pages} pages · complete and unabridged</p>
+        <p style="margin:13px 0 0;font-family:${SERIF};font-size:16px;line-height:1.62;color:${C.body};">Six chapters and the Lincoln account: the eight systems every business runs on, and why one weak system limits all the others.</p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
           <tr><td style="background-color:${C.ink};">
-            <a href="${checklistUrl}" style="display:inline-block;padding:14px 26px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${C.gold};text-decoration:none;">Download the checklist</a>
+            <a href="${chapterUrl}" style="display:inline-block;padding:14px 26px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${C.gold};text-decoration:none;">Download Part One</a>
           </td></tr>
         </table>
       </td></tr>
@@ -288,9 +291,9 @@ export function buildRegistrantEmail(input: {
 </body>
 </html>`;
   const text = [
-    `Your checklist is inside, ${firstName.trim() || "friend"}.`,
+    `Part One is inside, ${firstName.trim() || "friend"}.`,
     ``,
-    `Nothing has been held back. This is the full instrument, not a sample of it.`,
+    `Nothing has been held back. This is the complete, unabridged chapter -- not a teaser.`,
     ``,
     `Before you open it, here are the four minutes that matter most.`,
     ``,
@@ -301,10 +304,10 @@ export function buildRegistrantEmail(input: {
     ``,
     `${EXERCISE_PROMPT.reframeLabel}: ${EXERCISE_PROMPT.reframe}`,
     ``,
-    `There is a page at the back of the checklist for this sentence. It is the last page for a reason.`,
+    `At the live session, I will hand you a page built for exactly this sentence -- the First-Sale Readiness Checklist. It is yours the moment you show up.`,
     ``,
     `YOUR RESOURCE`,
-    `${READINESS_CHECKLIST.title}: ${checklistUrl}`,
+    `${SAMPLE_CHAPTER.title}: ${chapterUrl}`,
     ``,
     `One more thing. I am preparing something for the people on this list, and you will hear about it here first. More soon.`,
     ``,
@@ -317,10 +320,147 @@ export function buildRegistrantEmail(input: {
       : []),
   ].join("\n");
   return {
-    subject: "Your checklist is inside",
+    subject: "Part One is inside",
     html,
     text,
   };
+}
+/* ------------------------------------------------------------------ *
+ * The checklist reward — sent only once attendance is marked
+ * ------------------------------------------------------------------ */
+/**
+ * The email that actually delivers the First-Sale Readiness Checklist. Sent
+ * exactly once, the moment Tabitha marks someone attended on the dashboard —
+ * never automatically, never on a timer, and never to anyone who has not
+ * been marked. This is what makes the reward real rather than a formality.
+ */
+export function buildAttendanceRewardEmail(input: {
+  firstName: string;
+  baseUrl: string;
+  logoUrl?: string;
+  unsubscribeUrl?: string;
+  /** Counted download link for the checklist. */
+  trackedUrls?: { checklist: string };
+}) {
+  const { firstName, baseUrl } = input;
+  const checklistUrl = input.trackedUrls?.checklist ?? absolute(baseUrl, READINESS_CHECKLIST.url);
+  const name = escapeHtml(firstName.trim() || "friend");
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Your checklist, because you showed up</title>
+</head>
+<body style="margin:0;padding:0;background-color:${C.goldTint};">
+<div style="display:none;font-size:1px;color:${C.goldTint};max-height:0;overflow:hidden;">Thank you for being there. Here is the checklist I promised.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.goldTint};padding:28px 12px;">
+<tr><td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:${C.paper};">
+  <!-- Masthead -->
+  <tr><td style="background-color:${C.ink};padding:30px 36px;text-align:center;">
+    ${
+      input.logoUrl
+        ? `<img src="${input.logoUrl}" width="56" height="56" alt="Kingdom Solutions AI" style="display:block;margin:0 auto 14px;width:56px;height:56px;border:0;" />`
+        : ""
+    }
+    <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${C.gold};">Kingdom Solutions AI&trade;</div>
+    <div style="font-family:${SERIF};font-size:14px;font-style:italic;color:#FFFFFF;opacity:0.72;margin-top:7px;">Leadership, clarity, and sustainable systems</div>
+  </td></tr>
+  <tr><td style="height:3px;background-color:${C.gold};line-height:3px;font-size:0;">&nbsp;</td></tr>
+  <!-- Greeting -->
+  <tr><td style="padding:38px 36px 0;">
+    <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">Thank you for being there, ${name}.</h1>
+    <div style="width:52px;height:3px;background-color:${C.gold};margin:18px 0 0;"></div>
+    <p style="margin:22px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
+      Showing up is worth more than it feels like in the moment. As promised, here is the First-Sale Readiness Checklist &mdash; yours because you actually gave the session your time.
+    </p>
+  </td></tr>
+  <!-- The resource -->
+  <tr><td style="padding:26px 36px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${C.gold};background-color:${C.goldTint};">
+      <tr><td style="padding:26px 28px;">
+        <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#9A7B12;">Your reward for showing up</div>
+        <p style="margin:11px 0 0;font-family:${DISPLAY};font-size:19px;line-height:1.3;font-weight:700;color:${C.navy};">${escapeHtml(READINESS_CHECKLIST.title)}</p>
+        <p style="margin:7px 0 0;font-family:${SANS};font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:${C.muted};">${READINESS_CHECKLIST.pages} pages · ${READINESS_CHECKLIST.fields} fillable fields</p>
+        <p style="margin:13px 0 0;font-family:${SERIF};font-size:16px;line-height:1.62;color:${C.body};">Fourteen conditions to meet before you take money from a client, plus the eight-system scoring diagnostic and a page for the one sentence from the close of the session. Type your answers straight into it and save the file &mdash; nothing to print.</p>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
+          <tr><td style="background-color:${C.ink};">
+            <a href="${checklistUrl}" style="display:inline-block;padding:14px 26px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${C.gold};text-decoration:none;">Download the checklist</a>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+  <!-- Signature -->
+  <tr><td style="padding:32px 36px 38px;">
+    <p style="margin:0;font-family:${SERIF};font-size:17px;line-height:1.6;color:${C.body};">Lead well,</p>
+    <p style="margin:14px 0 0;font-family:${DISPLAY};font-size:18px;font-weight:700;color:${C.navy};">Tabitha Rector</p>
+    <p style="margin:4px 0 0;font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#9A7B12;">Founder, Kingdom Solutions AI&trade;</p>
+  </td></tr>
+  <!-- Footer -->
+  <tr><td style="background-color:${C.ink};padding:22px 36px;text-align:center;">
+    <p style="margin:0;font-family:${SANS};font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.5);">
+      You are receiving this because you attended the live session.
+    </p>
+    ${
+      input.unsubscribeUrl
+        ? `<p style="margin:10px 0 0;font-family:${SANS};font-size:10px;letter-spacing:1.2px;color:rgba(255,255,255,0.42);">
+      <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:rgba(255,255,255,0.55);text-decoration:underline;">Unsubscribe</a>
+    </p>`
+        : ""
+    }
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+  const text = [
+    `Thank you for being there, ${firstName.trim() || "friend"}.`,
+    ``,
+    `Showing up is worth more than it feels like in the moment. As promised, here is the First-Sale Readiness Checklist -- yours because you actually gave the session your time.`,
+    ``,
+    `${READINESS_CHECKLIST.title}: ${checklistUrl}`,
+    ``,
+    `Lead well,`,
+    `Tabitha Rector`,
+    `Founder, Kingdom Solutions AI(TM)`,
+    ...(input.unsubscribeUrl
+      ? ["", `To stop receiving these emails: ${input.unsubscribeUrl}`]
+      : []),
+  ].join("\n");
+  return {
+    subject: "Your checklist, because you showed up",
+    html,
+    text,
+  };
+}
+/** Sends the attendance-reward email. Never throws — same contract as sendEmail. */
+export async function sendAttendanceRewardEmail(input: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  baseUrl: string;
+  logoUrl?: string;
+  unsubscribeUrl?: string;
+  trackedUrls?: { checklist: string };
+}): Promise<EmailResult> {
+  const message = buildAttendanceRewardEmail({
+    firstName: input.firstName,
+    baseUrl: input.baseUrl,
+    logoUrl: input.logoUrl,
+    unsubscribeUrl: input.unsubscribeUrl,
+    trackedUrls: input.trackedUrls,
+  });
+  return sendEmail({
+    to: { email: input.email, name: `${input.firstName} ${input.lastName}`.trim() },
+    subject: message.subject,
+    html: message.html,
+    text: message.text,
+    tags: ["attendance-reward"],
+    unsubscribeUrl: input.unsubscribeUrl,
+  });
 }
 /* ------------------------------------------------------------------ *
  * Owner notification
@@ -446,7 +586,7 @@ export async function sendSignupEmails(input: {
   logoUrl?: string;
   total?: number;
   unsubscribeUrl?: string;
-  trackedUrls?: { checklist: string };
+  trackedUrls?: { chapter: string; checklist?: string };
 }): Promise<EmailResult> {
   const registrant = buildRegistrantEmail({
     firstName: input.firstName,

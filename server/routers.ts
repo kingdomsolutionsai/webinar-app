@@ -14,7 +14,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { confirmUrl, verifyConfirm } from "./confirm";
-import { sendConfirmEmail, sendEmail, sendSignupEmails } from "./email";
+import { sendAttendanceRewardEmail, sendConfirmEmail, sendEmail, sendSignupEmails } from "./email";
 import {
   claimSequenceStep,
   confirmRegistration,
@@ -25,9 +25,11 @@ import {
   listDownloads,
   listRegistrations,
   listSequenceSends,
+  markAttended,
   releaseSequenceStep,
   setRegistrationEmailStatus,
   setEventSetting,
+  unmarkAttended,
   unsubscribeByEmail,
 } from "./db";
 import { trackedDownloadUrl } from "./downloads";
@@ -319,6 +321,45 @@ export const appRouter = router({
           ? { ok: true as const }
           : { ok: false as const, error: result.error };
       }),
+    /**
+     * Owner-only. The single action that gates the First-Sale Readiness
+     * Checklist: marking someone attended sends the checklist reward email
+     * the first time only (idempotent, same pattern as `confirm`). Never
+     * triggered automatically — this is the only path that can send it.
+     */
+    markAttended: adminProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input, ctx }) => {
+        const { row, alreadyAttended } = await markAttended(input.email);
+        if (!row) return { ok: false as const, error: "No such registration" };
+        if (!alreadyAttended) {
+          const stored = await getAllEventSettings();
+          const baseUrl = resolveEmailBaseUrl(stored[PUBLIC_URL_KEY], resolveBaseUrl(ctx.req));
+          try {
+            if (!(await isUnsubscribed(row.email))) {
+              await sendAttendanceRewardEmail({
+                firstName: row.firstName,
+                lastName: row.lastName,
+                email: row.email,
+                baseUrl,
+                logoUrl: baseUrl ? `${baseUrl}${LION_MARK_URL}` : undefined,
+                unsubscribeUrl: unsubscribeUrl(baseUrl, row.email),
+                trackedUrls: { checklist: trackedDownloadUrl(baseUrl, "checklist", row.email) },
+              });
+            }
+          } catch (error) {
+            console.error("[Email] Attendance reward send failed:", error);
+          }
+        }
+        return { ok: true as const, alreadyAttended };
+      }),
+    /** Owner-only. Corrects a mis-click — does not recall an email already sent. */
+    unmarkAttended: adminProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input }) => {
+        const row = await unmarkAttended(input.email);
+        return row ? { ok: true as const } : { ok: false as const, error: "No such registration" };
+      }),
     exportCsv: adminProcedure.query(async () => {
       const rows = await listRegistrations();
       const downloads = await listDownloads();
@@ -485,6 +526,8 @@ export const appRouter = router({
             z.literal(5),
             z.literal(6),
           ]),
+          /** Only affects letter six's wording — lets Tabitha preview both variants. */
+          attended: z.boolean().optional(),
         }),
       )
       .mutation(async ({ input, ctx }) => {
@@ -500,6 +543,7 @@ export const appRouter = router({
           eventDate: settings.date,
           eventTime: settings.time,
           replayUrl: settings.replayUrl,
+          attended: input.attended ?? false,
         });
         const result = await sendEmail({
           to: { email: to, name: "Tabitha Rector" },
