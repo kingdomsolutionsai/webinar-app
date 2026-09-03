@@ -36,13 +36,14 @@ export function RegistrationForm({
   const [values, setValues] = useState({ firstName: "", lastName: "", email: "" });
   const [errors, setErrors] = useState<Errors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  // Set once the signup call succeeds. The checklist itself has not been sent
+  // Set once the signup call succeeds. Part One itself has not been sent
   // yet at this point — only the confirmation email has — so this screen asks
   // for a click on that link rather than offering a download.
   const [confirmedName, setConfirmedName] = useState<string | null>(null);
-  // Only one free resource is offered now, so this is fixed rather than a
-  // visitor choice.
-  const resource: ResourceId = "checklist";
+  // Only one free resource is offered at signup now, so this is fixed rather
+  // than a visitor choice. The Readiness Checklist is a separate reward,
+  // handed out only to people who attend the live session.
+  const resource: ResourceId = "chapter";
   const register = trpc.registration.create.useMutation({
     onSuccess: data => {
       setConfirmedName(data.firstName);
@@ -90,8 +91,8 @@ export function RegistrationForm({
         </div>
         <div className="mt-7 h-[3px] w-14 bg-gold" />
         <p className="mt-7 font-serif text-[17px] leading-relaxed text-ink/80">
-          I just sent a confirmation link to the address you entered. Click it and the
-          First-Sale Readiness Checklist is sent straight to your inbox.
+          I just sent a confirmation link to the address you entered. Click it and Part One
+          of the book is sent straight to your inbox.
           {mode === "waitlist"
             ? " You will also be first to know when the live session is scheduled."
             : " That is also what locks in your seat for the session."}
@@ -193,7 +194,7 @@ export function RegistrationForm({
         </Button>
         <p className="font-sans text-[11px] leading-relaxed text-ink/45">
           {mode === "waitlist"
-            ? "Your details are used only to send the checklist and announce the session. No sharing, no selling."
+            ? "Your details are used only to send Part One and announce the session. No sharing, no selling."
             : "Your details are used only for this session. No sharing, no selling."}
         </p>
       </form>
