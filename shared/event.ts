@@ -67,7 +67,14 @@ export const SAMPLE_CHAPTER = {
   title: "Part One — The Big Picture: What Makes a Business Work",
 } as const;
 
-/** The second lead magnet: the fillable readiness checklist. */
+/**
+ * The second lead magnet: the fillable readiness checklist.
+ *
+ * No longer handed out at signup. It is now reserved as a reward for people
+ * who actually attend the live session — delivered the moment Tabitha marks
+ * someone attended on the dashboard, never automatically and never to anyone
+ * who has not shown up.
+ */
 export const READINESS_CHECKLIST = {
   url: "/downloads/First_Sale_Readiness_Checklist_Fillable_bf43ddb6.pdf",
   filename: "First-Sale-Readiness-Checklist-Fillable.pdf",
@@ -206,14 +213,14 @@ export const MODE_COPY: Record<
   }
 > = {
     waitlist: {
-    navCta: "Get the checklist, free",
-    heroCta: "Send me the checklist, free",
-    formHeading: "Get the Readiness Checklist",
-    formSubmit: "Send me the checklist",
+    navCta: "Get Part One, free",
+    heroCta: "Send me Part One, free",
+    formHeading: "Get Part One of the Book",
+    formSubmit: "Send me Part One",
     formSubmitting: "Preparing your file",
     sectionOverline: "Start Today",
     sectionHeading: "The date is not set. The work can start anyway.",
-    confirmOverline: "Your checklist is ready",
+    confirmOverline: "Part One is ready",
   },
   scheduled: {
     navCta: "Reserve your seat",
