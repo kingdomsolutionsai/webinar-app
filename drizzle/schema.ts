@@ -36,7 +36,15 @@ export const users = pgTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-/** Webinar registrations. One row per signup; `email` unique so repeats update. */
+/**
+ * Webinar registrations. One row per signup; `email` unique so repeats update.
+ *
+ * `confirmedAt` is set once the double opt-in link is clicked — the router and
+ * the drip sequence both gate on it, so it must exist here for either to work.
+ * `attendedAt` is set manually from the dashboard after the live session, and
+ * is what the First-Sale Readiness Checklist delivery is gated on: nobody
+ * receives it until Tabitha marks them as having actually shown up.
+ */
 export const registrations = pgTable("registrations", {
   id: serial("id").primaryKey(),
   firstName: varchar("firstName", { length: 120 }).notNull(),
@@ -46,6 +54,8 @@ export const registrations = pgTable("registrations", {
   resource: varchar("resource", { length: 40 }),
   emailStatus: varchar("emailStatus", { length: 20 }),
   emailDetail: text("emailDetail"),
+  confirmedAt: timestamp("confirmedAt"),
+  attendedAt: timestamp("attendedAt"),
   unsubscribedAt: timestamp("unsubscribedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
