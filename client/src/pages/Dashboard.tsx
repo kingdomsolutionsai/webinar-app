@@ -28,6 +28,7 @@ import {
   Pause,
   Play,
   Send,
+  UserCheck,
   Users,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -587,6 +588,39 @@ export default function Dashboard() {
     onSettled: () => setResendingEmail(null),
   });
 
+  /** Which row's attendance toggle is in flight, so only that button spins. */
+  const [attendingEmail, setAttendingEmail] = useState<string | null>(null);
+
+  const markAttended = trpc.registration.markAttended.useMutation({
+    onMutate: variables => setAttendingEmail(variables.email),
+    onSuccess: result => {
+      if (result.ok) {
+        toast.success(
+          result.alreadyAttended ? "Already marked attended" : "Marked attended — checklist sent",
+        );
+        utils.registration.list.invalidate();
+      } else {
+        toast.error(result.error ?? "Could not mark attended");
+      }
+    },
+    onError: () => toast.error("Could not mark attended. Please try again."),
+    onSettled: () => setAttendingEmail(null),
+  });
+
+  const unmarkAttended = trpc.registration.unmarkAttended.useMutation({
+    onMutate: variables => setAttendingEmail(variables.email),
+    onSuccess: result => {
+      if (result.ok) {
+        toast.success("Attendance cleared");
+        utils.registration.list.invalidate();
+      } else {
+        toast.error(result.error ?? "Could not clear attendance");
+      }
+    },
+    onError: () => toast.error("Could not clear attendance. Please try again."),
+    onSettled: () => setAttendingEmail(null),
+  });
+
   const sorted = useMemo(() => {
     if (!rows) return [];
     const copy = [...rows];
@@ -706,6 +740,9 @@ export default function Dashboard() {
   /** How many registrants have opened at least one resource. */
   const openedCount = sorted.filter(row => openedByEmail.has(row.email.toLowerCase())).length;
 
+  /** How many registrants have been marked attended — what unlocks the checklist. */
+  const attendedCount = sorted.filter(row => Boolean(row.attendedAt)).length;
+
   /** Short label for the resource column; "both" is possible via a repeat signup. */
   const resourceLabel = (id: string) =>
     id === "both" ? "Both" : (RESOURCES.find(item => item.id === id)?.label ?? id);
@@ -763,7 +800,7 @@ export default function Dashboard() {
 
       <main className="container space-y-8 py-10">
         {/* Summary */}
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
           <div className="border border-border bg-white px-7 py-6">
             <div className="flex items-center gap-2">
               <Users className="size-3.5 text-gold" />
@@ -791,6 +828,22 @@ export default function Dashboard() {
               {sorted.length > 0
                 ? `${Math.round((openedCount / sorted.length) * 100)}% of signups`
                 : "No signups yet"}
+            </p>
+          </div>
+
+          {/* Attendance is what unlocks the checklist reward — worth its own card. */}
+          <div className="border border-green/40 bg-green/5 px-7 py-6">
+            <div className="flex items-center gap-2">
+              <UserCheck className="size-3.5 text-green" />
+              <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/50">
+                Attended live
+              </p>
+            </div>
+            <p className="mt-3 font-display text-4xl font-black text-green">
+              {isLoading ? "—" : attendedCount}
+            </p>
+            <p className="mt-1.5 font-serif text-[14px] text-ink/55">
+              Mark this from the table below
             </p>
           </div>
 
@@ -889,6 +942,11 @@ export default function Dashboard() {
                     <th className="px-5 py-3.5 text-left">
                       <span className="font-sans text-[10px] font-bold uppercase tracking-[0.18em] text-white/75">
                         Delivery
+                      </span>
+                    </th>
+                    <th className="px-5 py-3.5 text-left">
+                      <span className="font-sans text-[10px] font-bold uppercase tracking-[0.18em] text-white/75">
+                        Attended
                       </span>
                     </th>
                     <th className="px-5 py-3.5 text-left">
@@ -994,6 +1052,38 @@ export default function Dashboard() {
                             </button>
                           ) : null}
                         </div>
+                      </td>
+
+                      {/* Attended: the single action that unlocks the checklist reward.
+                          Toggling on fires the reward email the first time only; toggling
+                          off just corrects a mis-click and never recalls a sent email. */}
+                      <td className="px-5 py-4">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            row.attendedAt
+                              ? unmarkAttended.mutate({ email: row.email })
+                              : markAttended.mutate({ email: row.email })
+                          }
+                          disabled={attendingEmail === row.email}
+                          title={
+                            row.attendedAt
+                              ? `Attended — click to undo (does not recall the checklist email)`
+                              : "Mark attended — sends the checklist"
+                          }
+                          className={cn(
+                            "inline-flex items-center gap-1.5 whitespace-nowrap border px-2.5 py-1.5 font-sans text-[9px] font-bold uppercase tracking-[0.14em] transition-colors disabled:opacity-50",
+                            row.attendedAt
+                              ? "border-green/50 bg-green/10 text-green hover:border-green hover:bg-green hover:text-white"
+                              : "border-navy/25 text-navy hover:border-navy hover:bg-navy hover:text-white",
+                          )}>
+                          {attendingEmail === row.email ? (
+                            <Loader2 className="size-3 animate-spin" />
+                          ) : row.attendedAt ? (
+                            <UserCheck className="size-3" />
+                          ) : null}
+                          {row.attendedAt ? "Attended" : "Mark attended"}
+                        </button>
                       </td>
                       <td className="px-5 py-4 font-serif text-[15px] text-ink/65">
                         {new Date(row.createdAt).toLocaleString()}

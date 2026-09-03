@@ -224,10 +224,9 @@ export default function Home() {
                   Start today &mdash; free
                 </p>
                 <p className="mt-3 font-serif text-[17px] leading-relaxed text-white/80">
-                  The live session is being scheduled. In the meantime two things are yours at no
-                  cost &mdash; Part One of the book, {SAMPLE_CHAPTER.pages} pages complete and
-                  unabridged, and the fillable First-Sale Readiness Checklist. Join the list and you
-                  will be first to know the date.
+                  The live session is being scheduled. In the meantime, Part One of the book is
+                  yours at no cost &mdash; {SAMPLE_CHAPTER.pages} pages, complete and unabridged.
+                  Join the list and you will be first to know the date.
                 </p>
               </div>
             ) : (
@@ -494,20 +493,16 @@ export default function Home() {
               <>
                 <p className="mt-8 max-w-lg font-serif text-[17px] leading-relaxed text-white/75">
                   I would rather give you something useful today than ask you to wait for a date I
-                  have not set. So there are two starting points, and you receive both. Part One
-                  settles what a business actually is and which of its eight systems is limiting
-                  you. The checklist puts the same thinking to work today &mdash; fourteen
-                  conditions to meet before you take money from a client, in a PDF you can type
-                  into and save.
+                  have not set. Part One settles what a business actually is and which of its
+                  eight systems is limiting you &mdash; complete and unabridged, not a teaser
+                  chapter. The First-Sale Readiness Checklist comes later, as my thank-you to
+                  everyone who actually shows up to the live session.
                 </p>
                 <div className="mt-8 grid max-w-lg gap-4 sm:grid-cols-2">
                   {[
                     { k: `${SAMPLE_CHAPTER.pages}-page chapter`, v: "Complete, not an excerpt" },
-                    {
-                      k: `${READINESS_CHECKLIST.fields} fillable fields`,
-                      v: "Type into it and save",
-                    },
                     { k: "No cost", v: "And no purchase required" },
+                    { k: "Checklist later", v: "For everyone who attends live" },
                     { k: "First to know", v: "When the date is set" },
                   ].map(item => (
                     <div key={item.k} className="border-l border-gold/40 pl-4">
@@ -530,6 +525,10 @@ export default function Home() {
                 <p className="mt-9 max-w-lg font-serif text-[17px] leading-relaxed text-white/75">
                   Bring something to write with. There is one exercise, it takes about four minutes,
                   and it is the part most people tell me they remember.
+                </p>
+                <p className="mt-4 max-w-lg font-serif text-[16px] leading-relaxed text-white/60">
+                  Everyone who attends live also receives the {READINESS_CHECKLIST.title} afterward
+                  &mdash; my thank-you for actually showing up.
                 </p>
               </>
             )}

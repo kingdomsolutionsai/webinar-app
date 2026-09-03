@@ -4,10 +4,10 @@ import { trpc } from "@/lib/trpc";
 import {
   AUDIT_INVITATION,
   EXERCISE_PROMPT,
-  READINESS_CHECKLIST,
+  SAMPLE_CHAPTER,
   THREE_TRACKS,
 } from "@shared/event";
-import { AlertCircle, ArrowUpRight, ClipboardCheck, Download, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowUpRight, BookOpen, Download, Loader2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link } from "wouter";
 /**
@@ -15,9 +15,14 @@ import { Link } from "wouter";
  * the `e` (email) and `t` (signed token) query params are verified server-side
  * in `registration.confirm`, the same pattern already used by /unsubscribe.
  *
- * This is where the checklist is actually handed over — the signup form only
- * ever promises "check your email" (see RegistrationForm.tsx), so everything
- * below was previously shown right after signup and now waits for this click.
+ * This is where Part One is actually handed over — the signup form only ever
+ * promises "check your email" (see RegistrationForm.tsx), so everything below
+ * was previously shown right after signup and now waits for this click.
+ *
+ * The First-Sale Readiness Checklist is deliberately absent from this page.
+ * It is no longer a signup resource — it is a reward reserved for people who
+ * actually attend the live session, delivered separately once Tabitha marks
+ * attendance on the dashboard.
  */
 export default function Confirm() {
   const params = new URLSearchParams(window.location.search);
@@ -67,7 +72,7 @@ export default function Confirm() {
   /* -------------------- Success -------------------- */
   const { firstName, track, downloads } = confirm.data;
   const chosen = THREE_TRACKS.find(item => item.id === track);
-  const href = downloads?.checklist ?? READINESS_CHECKLIST.url;
+  const href = downloads?.chapter ?? SAMPLE_CHAPTER.url;
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-16">
       <div className="border border-gold bg-white p-8 sm:p-10">
@@ -75,7 +80,7 @@ export default function Confirm() {
           <LionMark size={48} />
           <div>
             <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.22em] text-gold">
-              Your checklist is ready
+              Part One is ready
             </p>
             <h3 className="mt-1 font-display text-2xl font-black text-navy">
               Confirmed, {firstName}.
@@ -91,30 +96,35 @@ export default function Confirm() {
         <div className="mt-7 space-y-3">
           <div className="border border-gold bg-gold-tint p-6">
             <div className="flex items-start gap-3">
-              <ClipboardCheck className="mt-0.5 size-4 shrink-0 text-gold-dark" />
+              <BookOpen className="mt-0.5 size-4 shrink-0 text-gold-dark" />
               <div>
                 <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-dark">
                   Ready now
                 </p>
                 <p className="mt-2 font-display text-lg font-bold leading-tight text-navy">
-                  {READINESS_CHECKLIST.title}
+                  {SAMPLE_CHAPTER.title}
                 </p>
                 <p className="mt-2 font-serif text-[16px] leading-relaxed text-ink/75">
-                  {READINESS_CHECKLIST.pages} pages with {READINESS_CHECKLIST.fields} fillable
-                  fields. Type your answers straight into it and save the file — nothing to
-                  print.
+                  {SAMPLE_CHAPTER.pages} pages, complete and unabridged — not an excerpt.
+                  Six chapters and the Lincoln account, covering the eight systems every
+                  business runs on.
                 </p>
               </div>
             </div>
             <Button
               asChild
               className="mt-5 w-full bg-ink font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-gold hover:bg-ink/90">
-              <a href={href} download={READINESS_CHECKLIST.filename}>
+              <a href={href} download={SAMPLE_CHAPTER.filename}>
                 <Download className="mr-1.5 size-3.5" />
-                Download the checklist
+                Download Part One
               </a>
             </Button>
           </div>
+          <p className="font-serif text-[15px] italic leading-relaxed text-ink/55">
+            The First-Sale Readiness Checklist is my thank-you gift for people who actually
+            show up to the live session — it will be waiting in your inbox afterward if you're
+            there.
+          </p>
         </div>
         {/* The one-sentence exercise from the close of the session. */}
         <div className="mt-7 border border-navy/25 bg-secondary/50 p-6">
