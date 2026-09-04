@@ -658,6 +658,45 @@ export function buildReplayLetter(ctx: SequenceContext) {
 }
 
 /**
+ * The event "Time" setting is free text the owner types for humans to read —
+ * "11AM-NOON ET" is exactly the kind of thing that belongs on a flyer. It is
+ * not something JavaScript's Date parser can handle as-is: a trailing timezone
+ * abbreviation or a time range makes it give up and return Invalid Date. That
+ * would silently and permanently disable letters 4, 5 and 6 below, with no
+ * error anywhere, so this normalizes the common real-world shapes before
+ * parsing rather than asking the owner to type something parser-friendly.
+ */
+function normalizeEventTimeForParsing(time: string): string {
+  let t = time.trim();
+  if (!t) return t;
+  // Drop a trailing timezone abbreviation: "11:00 AM ET" -> "11:00 AM".
+  t = t.replace(/\b(ET|EST|EDT|CT|CST|CDT|MT|MST|MDT|PT|PST|PDT|UTC|GMT)\.?\s*$/i, "").trim();
+  // A range ("11AM-NOON", "2:00 - 3:00 PM") describes a span; the session
+  // *starts* at the first half. If only the second half carries AM/PM
+  // ("2:00-3:00 PM"), borrow it for the first half before dropping the rest.
+  const rangeParts = t.split(/\s*[-–—]\s*|\s+to\s+/i);
+  if (rangeParts.length > 1 && rangeParts[0].trim()) {
+    let first = rangeParts[0].trim();
+    const second = rangeParts[1]?.trim() ?? "";
+    const hasMeridiem = /[AaPp][Mm]\.?$/;
+    if (!hasMeridiem.test(first) && hasMeridiem.test(second)) {
+      first = `${first} ${second.match(hasMeridiem)![0]}`;
+    }
+    t = first;
+  }
+  if (/^noon$/i.test(t)) return "12:00 PM";
+  if (/^midnight$/i.test(t)) return "12:00 AM";
+  // "11AM" / "9:30pm" / "11 AM" -> "11:00 AM" / "9:30 PM": Date needs a space
+  // before AM/PM and a colon in the time to parse a 12-hour clock reliably.
+  const m = t.match(/^(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])\.?$/);
+  if (m) {
+    const [, h, min, mer] = m;
+    t = `${h}:${min ?? "00"} ${mer.toUpperCase()}`;
+  }
+  return t;
+}
+
+/**
  * Whether the morning-after letter may go out yet.
  *
  * Three conditions, all required: a real date exists, that date plus the delay
@@ -667,7 +706,8 @@ export function buildReplayLetter(ctx: SequenceContext) {
  */
 function eventStartedAt(eventDate?: string, eventTime?: string): Date | null {
   if (isPlaceholder(eventDate)) return null;
-  const stamp = [eventDate, eventTime].filter(v => v && !isPlaceholder(v)).join(" ");
+  const cleanedTime = eventTime ? normalizeEventTimeForParsing(eventTime) : eventTime;
+  const stamp = [eventDate, cleanedTime].filter(v => v && !isPlaceholder(v)).join(" ");
   const at = new Date(stamp);
   // An unparseable date must never be treated as "in the past".
   return Number.isNaN(at.getTime()) ? null : at;
