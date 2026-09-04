@@ -29,8 +29,7 @@ const BOOK_CALL_URL =
   "https://calendly.com/tabitha-kingdomsolutionsai/ks-ai-intelligence-systems-strategy-call";
 
 const GREETING =
-  "Welcome. Tell me where you are right now: you have an idea but no offer yet, you are serving clients but need structure, or you are overwhelmed and need capacity.";
-
+  "Hi! I can answer questions about the webinar—who it is for, what you will learn, and what you will receive when you attend. For the step-by-step guidance, reserve your seat.";
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type DisplayMessage = { id: number; role: "user" | "assistant"; content: string; typing?: boolean };
 
