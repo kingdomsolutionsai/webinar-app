@@ -29,7 +29,7 @@ const BOOK_CALL_URL =
   "https://calendly.com/tabitha-kingdomsolutionsai/ks-ai-intelligence-systems-strategy-call";
 
 const GREETING =
-  'Hi! I\'m here to answer questions about "What Every New Entrepreneur Needs to Know" and the September 22 webinar with Tabitha Rector. Ask me about the eight systems, the 90-day roadmap, the AI ladder, the free handbook, or how Clarity Pro™ and Constance™ can help your business.';
+  "Welcome. Tell me where you are right now: you have an idea but no offer yet, you are serving clients but need structure, or you are overwhelmed and need capacity.";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type DisplayMessage = { id: number; role: "user" | "assistant"; content: string; typing?: boolean };
@@ -253,7 +253,12 @@ export function ChatWidget() {
         }
       `}</style>
 
-      <button id="ksai-chat-launcher" aria-label="Chat with us" onClick={openChat} type="button">
+<button
+  id="ksai-chat-launcher"
+  aria-label="Not sure where to start?"
+  onClick={openChat}
+  type="button"
+>
         <svg viewBox="0 0 24 24">
           <path d="M12 2C6.48 2 2 6.03 2 11c0 2.42 1.09 4.61 2.86 6.24-.13 1.28-.5 2.6-1.36 3.76 1.66-.13 3.14-.71 4.29-1.6 1.28.4 2.68.6 4.21.6 5.52 0 10-4.03 10-9S17.52 2 12 2z" />
         </svg>
