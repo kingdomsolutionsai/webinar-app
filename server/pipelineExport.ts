@@ -93,7 +93,7 @@ export function toPipelineCsv(rows: PipelineRow[]): string {
       csvEscape(`${row.firstName} ${row.lastName}`.trim()),
       csvEscape(row.email),
       csvEscape(deriveStage(row)),
-      csvEscape("Webinar registration — What Every New Entrepreneur Needs to Know"),
+      csvEscape("Webinar registration: What Entrepreneurs Need to Know"),
       csvEscape(""), // Industry: not collected. Blank beats a guess.
       csvEscape(""), // Deal Size: unknowable at signup.
       csvEscape(""), // Next Follow-Up: Tabitha's decision, not ours.

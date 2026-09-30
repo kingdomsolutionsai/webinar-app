@@ -355,7 +355,7 @@ export function buildSequenceStepThree(ctx: SequenceContext) {
     ? [
         paragraph(`The date is set, ${name}.`),
         `<tr><td style="padding:24px 36px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${C.gold};background-color:${C.goldTint};"><tr><td style="padding:24px 28px;text-align:center;">
-          <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#9A7B12;">What Every New Entrepreneur Needs to Know</div>
+          <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#9A7B12;">What Entrepreneurs Need to Know</div>
           <p style="margin:12px 0 0;font-family:${DISPLAY};font-size:22px;font-weight:700;color:${C.navy};">${escapeHtml(when)}</p>
         </td></tr></table></td></tr>`,
         paragraph(
@@ -382,7 +382,7 @@ export function buildSequenceStepThree(ctx: SequenceContext) {
     ? [
         `The date is set.`,
         ``,
-        `What Every New Entrepreneur Needs to Know -- ${when}`,
+        `What Entrepreneurs Need to Know -- ${when}`,
         ``,
         `We walk the whole sequence in order: the eight systems, the order to build them in, the six steps that produce evidence before expense, and where AI belongs once the human decisions are made.`,
         ``,

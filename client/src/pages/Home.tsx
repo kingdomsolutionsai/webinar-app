@@ -134,6 +134,55 @@ const FOUNDERS = [
     source: "Public interviews and Spanx company history",
   },
 ];
+/* ------------------------------------------------------------------ *
+ * Chatbot briefing. Built from the same live settings and content the page
+ * shows, so the chatbot always knows the current date, time and agenda.
+ * When Tabitha changes the date on the dashboard, the chatbot updates too.
+ * ------------------------------------------------------------------ */
+function buildChatContext(event: {
+  date: string;
+  time: string;
+  duration: string;
+  price: string;
+}): string {
+  const scheduled = !isPlaceholder(event.date);
+  const priceLine = isPlaceholder(event.price) ? "Free" : event.price;
+  const schedule = scheduled
+    ? [
+        `Date: ${event.date}`,
+        `Time: ${isPlaceholder(event.time) ? "not yet announced" : `${event.time} Eastern Time (ET)`}`,
+        `Duration: ${isPlaceholder(event.duration) ? "not yet announced" : event.duration}`,
+        `Cost: ${priceLine}`,
+        `Format: live online session. Registrants receive the join link by email after reserving a seat on this page.`,
+      ].join("\n")
+    : "The next date has not been announced yet. Visitors can join the list on this page to get Part One of the book free and be the first to know the date.";
+
+  return [
+    "WEBINAR FACTS (from the live registration page the visitor is on right now; treat these as current and accurate, and answer date, time and agenda questions directly from them):",
+    "",
+    "Title: What Entrepreneurs Need to Know",
+    "Host: Tabitha Rector, Founder of Kingdom Solutions AI",
+    "Website: whatentrepreneursneedtoknow.com",
+    schedule,
+    "",
+    "What it is: a live session that walks the correct sequence for building a business: the eight systems every business runs on, the correct start order, and where to begin with AI while human authority stays intact. Founders rarely fail for lack of talent or a worthy idea; they fail because they did the right things in the wrong order.",
+    "",
+    "The eight parts covered, in decision order:",
+    ...EIGHT_PARTS.map(p => `${p.n}. ${p.title}: ${p.body}`),
+    "",
+    "Three takeaways:",
+    ...TAKEAWAYS.map(t => `- ${t.title}: ${t.body}`),
+    "",
+    "Who it is for (three starting points):",
+    ...THREE_TRACKS.map(t => `- ${t.label}: ${t.summary} ${t.startHere}`),
+    "",
+    `Free resources: everyone who signs up gets Part One of the book (${SAMPLE_CHAPTER.pages}-page PDF, complete, not an excerpt). Everyone who attends live receives the ${READINESS_CHECKLIST.title} (${READINESS_CHECKLIST.pages}-page fillable PDF) afterward as a thank-you. The checklist is only for live attendees.`,
+    "Bring something to write with: there is one short exercise (about four minutes).",
+    "Disclaimer: the session is educational and is not legal, tax, or financial advice. It does not promise revenue in ninety days; it teaches the order.",
+    "",
+    "How to answer: be warm, brief and specific. When asked about the date or time, state them plainly and then invite the visitor to reserve a seat with the form on this page. Do not invent details that are not listed here; if something is not covered, suggest emailing tabitha@kingdomsolutionsai.com. Do not use em dashes.",
+  ].join("\n");
+}
 /* ------------------------------------------------------------------ */
 function EventDetail({
   label,
@@ -204,11 +253,9 @@ export default function Home() {
           <div>
             <Overline>A Live Session with Tabitha Rector</Overline>
             <h1 className="mt-5 font-display text-4xl font-black leading-[1.06] tracking-[-0.02em] text-white sm:text-5xl lg:text-[3.35rem]">
-              What Every New
+              What Entrepreneurs
               <br />
-              Entrepreneur
-              <br />
-              <span className="text-gold">Needs to Know</span>
+              <span className="text-gold">Need to Know</span>
             </h1>
             <GoldRule className="mt-7" />
             <p className="mt-7 max-w-xl font-serif text-lg leading-relaxed text-white/80">
@@ -643,7 +690,7 @@ export default function Home() {
           </p>
         </div>
       </footer>
-      <ChatWidget />
+      <ChatWidget context={buildChatContext(event)} />
     </div>
   );
 }

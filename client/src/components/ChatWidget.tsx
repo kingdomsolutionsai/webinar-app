@@ -2,9 +2,14 @@ import { useEffect, useRef, useState } from "react";
 
 /**
  * Floating chat widget for the webinar sign-up page. Answers visitor
- * questions about "What Every New Entrepreneur Needs to Know" and the
- * September 22 webinar, and nudges toward a discovery call when it senses
- * buying interest in Clarity Pro™ or Constance™.
+ * questions about the "What Entrepreneurs Need to Know" webinar, and nudges
+ * toward a discovery call when it senses buying interest in Clarity Pro™ or
+ * Constance™.
+ *
+ * The page passes in `context`: a briefing built from the live dashboard
+ * settings (date, time, duration) and the page content. It is sent ahead of
+ * the conversation on every request, so the chatbot always has the current
+ * webinar details without anyone editing the Cloudflare Worker.
  *
  * This is a React port of chatbot-worker.js's companion widget — same
  * behavior, same look, dropped in as a component instead of a pasted
@@ -29,13 +34,16 @@ const BOOK_CALL_URL =
   "https://calendly.com/tabitha-kingdomsolutionsai/ks-ai-intelligence-systems-strategy-call";
 
 const GREETING =
-  "Hi! I can answer questions about the webinar—who it is for, what you will learn, and what you will receive when you attend. For the step-by-step guidance, reserve your seat.";
+  "Hi! I can answer questions about the webinar: when it is, who it is for, what you will learn, and what you will receive when you attend.";
+
+const CONTEXT_ACK =
+  "Understood. I will answer from these webinar facts, including the date and time.";
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type DisplayMessage = { id: number; role: "user" | "assistant"; content: string; typing?: boolean };
 
 const BOOK_CALL_RE = /book(ing)? a (discovery )?call|schedule a call/i;
 
-export function ChatWidget() {
+export function ChatWidget({ context }: { context?: string }) {
   const [open, setOpen] = useState(false);
   const [hasGreeted, setHasGreeted] = useState(false);
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -85,7 +93,17 @@ export function ChatWidget() {
       const res = await fetch(WORKER_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: historyRef.current }),
+        body: JSON.stringify({
+          // The briefing goes first as a user/assistant pair so the roles
+          // still alternate correctly for the Anthropic API.
+          messages: context
+            ? [
+                { role: "user", content: context },
+                { role: "assistant", content: CONTEXT_ACK },
+                ...historyRef.current,
+              ]
+            : historyRef.current,
+        }),
       });
       if (!res.ok) throw new Error(`Bad response: ${res.status}`);
       const data = (await res.json()) as { reply?: string };
