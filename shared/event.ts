@@ -9,9 +9,17 @@ export const EVENT_SETTING_KEYS = [
   "duration",
   "price",
   "joinUrl",
+  "zoomPasscode",
   "publicSiteUrl",
   "replayUrl",
 ] as const;
+
+/**
+ * The only settings the public registration page may read. The join link and
+ * passcode are deliberately absent: they go to registrants by email, and
+ * publishing them would let anyone walk into the session.
+ */
+export const PUBLIC_SETTING_KEYS = ["date", "time", "duration", "price"] as const;
 
 export type EventSettingKey = (typeof EVENT_SETTING_KEYS)[number];
 
@@ -21,6 +29,7 @@ export const EVENT_DEFAULTS: Record<EventSettingKey, string> = {
   duration: "[DURATION]",
   price: "[PRICE]",
   joinUrl: "",
+  zoomPasscode: "",
   publicSiteUrl: "",
   replayUrl: "",
 };
@@ -30,6 +39,7 @@ export const EVENT_LABELS: Record<EventSettingKey, string> = {
   duration: "Duration",
   price: "Investment",
   joinUrl: "Join link",
+  zoomPasscode: "Zoom passcode",
   publicSiteUrl: "Public web address",
   replayUrl: "Replay link",
 };

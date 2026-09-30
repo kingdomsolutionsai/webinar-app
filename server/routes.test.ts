@@ -24,6 +24,11 @@ const dispatch = vi.fn(async () => ({
 }));
 vi.mock("./sequence", () => ({ runSequenceDispatch: dispatch }));
 
+const synced: string[] = [];
+vi.mock("./brevo", () => ({ syncInBackground: vi.fn((email: string) => synced.push(email)) }));
+
+vi.mock("./_core/env", () => ({ ENV: { cronSecret: "cron-secret" } }));
+
 let authResult: { isCron?: boolean; taskUid?: string } | Error = { isCron: true, taskUid: "t1" };
 vi.mock("./_core/sdk", () => ({
   sdk: {
@@ -43,6 +48,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   recorded.length = 0;
+  synced.length = 0;
   dispatch.mockClear();
 });
 
@@ -125,32 +131,27 @@ describe("GET /api/download", () => {
   });
 });
 
-describe("POST /api/scheduled/sequence", () => {
-  it("runs the dispatch for a cron caller", async () => {
-    authResult = { isCron: true, taskUid: "task-1" };
+describe("POST /api/scheduled/sequence (retired: Brevo sends now)", () => {
+  it("answers the Render cron job without sending anything", async () => {
     const res = makeRes();
-    await sequenceHandler({ headers: {}, originalUrl: "/api/scheduled/sequence" } as never, res as never);
+    await sequenceHandler(
+      { headers: { "x-cron-secret": "cron-secret" }, query: {}, originalUrl: "/api/scheduled/sequence" } as never,
+      res as never,
+    );
 
-    expect(dispatch).toHaveBeenCalledTimes(1);
-    expect((res.body as { ok: boolean }).ok).toBe(true);
-  });
-
-  it("refuses a signed-in human, because this endpoint is for the scheduler alone", async () => {
-    authResult = { isCron: false };
-    const res = makeRes();
-    await sequenceHandler({ headers: {}, originalUrl: "/api/scheduled/sequence" } as never, res as never);
-
-    expect(res.statusCode).toBe(403);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toMatchObject({ ok: true, handedToBrevo: true, sent: 0 });
     expect(dispatch).not.toHaveBeenCalled();
   });
 
-  it("reports a failure as JSON so the platform can surface it", async () => {
-    authResult = new Error("no session");
+  it("still refuses a caller without the cron secret", async () => {
     const res = makeRes();
-    await sequenceHandler({ headers: {}, originalUrl: "/api/scheduled/sequence" } as never, res as never);
+    await sequenceHandler(
+      { headers: {}, query: {}, originalUrl: "/api/scheduled/sequence" } as never,
+      res as never,
+    );
 
-    expect(res.statusCode).toBe(500);
-    expect((res.body as { error: string }).error).toBe("no session");
-    authResult = { isCron: true, taskUid: "t1" };
+    expect(res.statusCode).toBe(403);
+    expect(dispatch).not.toHaveBeenCalled();
   });
 });

@@ -74,7 +74,7 @@ export const FINAL_STEP = 6 as const;
 /* ------------------------------------------------------------------ *
  * Shared shell — one layout, so the three letters look like one voice
  * ------------------------------------------------------------------ */
-const C = {
+export const C = {
   ink: "#0B0B0B",
   gold: "#C9A227",
   goldTint: "#FBF7EA",
@@ -85,11 +85,11 @@ const C = {
   muted: "#6B6B6B",
   rule: "#E5E2D9",
 };
-const SERIF = "'EB Garamond', Georgia, 'Times New Roman', serif";
-const SANS = "'Montserrat', 'Helvetica Neue', Arial, sans-serif";
-const DISPLAY = "'Playfair Display', Georgia, serif";
+export const SERIF = "'EB Garamond', Georgia, 'Times New Roman', serif";
+export const SANS = "'Montserrat', 'Helvetica Neue', Arial, sans-serif";
+export const DISPLAY = "'Playfair Display', Georgia, serif";
 
-function escapeHtml(value: string) {
+export function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -97,13 +97,15 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
-function shell(input: {
+export function shell(input: {
   preheader: string;
   heading: string;
   bodyHtml: string;
   baseUrl: string;
   logoUrl?: string;
   unsubscribeUrl?: string;
+  /** Replaces the default "why you are receiving this" line in the footer. */
+  footerNote?: string;
 }) {
   return `<!doctype html>
 <html lang="en">
@@ -138,7 +140,7 @@ function shell(input: {
   </td></tr>
 
   <tr><td style="background-color:${C.ink};padding:22px 36px;text-align:center;">
-    <p style="margin:0;font-family:${SANS};font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.5);">You are receiving this because you requested the free resources.</p>
+    <p style="margin:0;font-family:${SANS};font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.5);">${escapeHtml(input.footerNote ?? "You are receiving this because you requested the free resources.")}</p>
     ${
       input.unsubscribeUrl
         ? `<p style="margin:10px 0 0;font-family:${SANS};font-size:10px;letter-spacing:1.2px;"><a href="${escapeHtml(input.unsubscribeUrl)}" style="color:rgba(255,255,255,0.55);text-decoration:underline;">Unsubscribe</a></p>`
@@ -153,15 +155,15 @@ function shell(input: {
 </html>`;
 }
 
-function paragraph(text: string) {
+export function paragraph(text: string) {
   return `<tr><td style="padding:20px 36px 0;"><p style="margin:0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">${text}</p></td></tr>`;
 }
 
-function pullQuote(text: string) {
+export function pullQuote(text: string) {
   return `<tr><td style="padding:24px 36px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-left:3px solid ${C.gold};padding:4px 0 4px 18px;"><p style="margin:0;font-family:${DISPLAY};font-size:19px;line-height:1.45;font-style:italic;color:${C.navy};">${text}</p></td></tr></table></td></tr>`;
 }
 
-function buttonRow(label: string, url: string) {
+export function buttonRow(label: string, url: string) {
   return `<tr><td style="padding:26px 36px 0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background-color:${C.ink};"><a href="${url}" style="display:inline-block;padding:14px 26px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${C.gold};text-decoration:none;">${escapeHtml(label)}</a></td></tr></table></td></tr>`;
 }
 
@@ -173,7 +175,7 @@ function buttonRow(label: string, url: string) {
  * letter three carries the session announcement — putting a second ask beside it
  * would compete with the one action that letter exists to produce.
  */
-function postscriptRow(text: string, label: string, url: string) {
+export function postscriptRow(text: string, label: string, url: string) {
   return `<tr><td style="padding:30px 36px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:1px solid ${C.rule};padding-top:18px;">
     <p style="margin:0;font-family:${SERIF};font-size:15px;line-height:1.6;color:${C.muted};">${escapeHtml(text)} <a href="${url}" style="color:${C.navy};text-decoration:underline;">${escapeHtml(label)}</a></p>
   </td></tr></table></td></tr>`;
@@ -207,12 +209,18 @@ export type SequenceContext = {
    * email, fired the moment Tabitha marks someone attended.
    */
   attended?: boolean;
+  /**
+   * Replaces the counted Part One link. Used when a letter is stored in Brevo,
+   * where the link has to be built from Brevo's per-contact placeholders
+   * instead of being signed here for one known address.
+   */
+  chapterUrlOverride?: string;
 };
 
 /** Letter one, day two: the promised heads-up, and a nudge to actually open the file. */
 export function buildSequenceStepOne(ctx: SequenceContext) {
   const name = escapeHtml(ctx.firstName.trim() || "friend");
-  const chapterUrl = trackedDownloadUrl(ctx.baseUrl, "chapter", ctx.email);
+  const chapterUrl = ctx.chapterUrlOverride ?? trackedDownloadUrl(ctx.baseUrl, "chapter", ctx.email);
 
   const body = [
     paragraph(
@@ -267,7 +275,7 @@ export function buildSequenceStepOne(ctx: SequenceContext) {
 export function buildSequenceStepTwo(ctx: SequenceContext) {
   const name = escapeHtml(ctx.firstName.trim() || "friend");
   const hasDate = !isPlaceholder(ctx.eventDate);
-  const chapterUrl = trackedDownloadUrl(ctx.baseUrl, "chapter", ctx.email);
+  const chapterUrl = ctx.chapterUrlOverride ?? trackedDownloadUrl(ctx.baseUrl, "chapter", ctx.email);
   const cta = hasDate
     ? { label: "Reserve your seat", url: ctx.baseUrl }
     : { label: "Revisit Part One", url: chapterUrl };
@@ -346,7 +354,7 @@ export function buildSequenceStepTwo(ctx: SequenceContext) {
 export function buildSequenceStepThree(ctx: SequenceContext) {
   const name = escapeHtml(ctx.firstName.trim() || "friend");
   const hasDate = !isPlaceholder(ctx.eventDate);
-  const chapterUrl = trackedDownloadUrl(ctx.baseUrl, "chapter", ctx.email);
+  const chapterUrl = ctx.chapterUrlOverride ?? trackedDownloadUrl(ctx.baseUrl, "chapter", ctx.email);
   const when = hasDate
     ? [ctx.eventDate, ctx.eventTime].filter(v => v && !isPlaceholder(v)).join(" at ")
     : "";
@@ -503,7 +511,7 @@ export function buildPostSessionLetter(ctx: SequenceContext) {
  */
 export function buildFinalLetter(ctx: SequenceContext) {
   const name = escapeHtml(ctx.firstName.trim() || "friend");
-  const chapterUrl = trackedDownloadUrl(ctx.baseUrl, "chapter", ctx.email);
+  const chapterUrl = ctx.chapterUrlOverride ?? trackedDownloadUrl(ctx.baseUrl, "chapter", ctx.email);
   const remainsYours = ctx.attended
     ? `Nothing here expires. The chapter and the checklist remain yours, the audit will still be there in six months, and if you come back a year from now with a different question, I will still answer it.`
     : `Nothing here expires. Part One remains yours, the audit will still be there in six months, and if a future session comes around, the checklist will be waiting for you there too.`;

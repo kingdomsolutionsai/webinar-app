@@ -25,8 +25,6 @@ import {
   Lock,
   LogOut,
   Mail,
-  Pause,
-  Play,
   Send,
   UserCheck,
   Users,
@@ -78,7 +76,7 @@ function Gate({
  * ------------------------------------------------------------------ */
 function EventDetailsEditor() {
   const utils = trpc.useUtils();
-  const { data: settings } = trpc.settings.get.useQuery();
+  const { data: settings } = trpc.settings.getAll.useQuery();
   const [draft, setDraft] = useState<Record<string, string> | null>(null);
 
   // Seed the draft once settings arrive; never during render.
@@ -93,6 +91,8 @@ function EventDetailsEditor() {
   const save = trpc.settings.update.useMutation({
     onSuccess: () => {
       utils.settings.get.invalidate();
+      utils.settings.getAll.invalidate();
+      utils.brevo.status.invalidate();
       toast.success("Event details updated", {
         description: "The registration page now shows your new values.",
       });
@@ -160,13 +160,15 @@ function EventDetailsEditor() {
         {EVENT_SETTING_KEYS.map(key => {
           const value = draft[key] ?? "";
           const isUrlField = key === "joinUrl" || key === "publicSiteUrl";
-          const pending = isPlaceholder(value) && !isUrlField;
+          const pending = isPlaceholder(value) && !isUrlField && key !== "zoomPasscode";
           const help =
             key === "publicSiteUrl"
               ? "The address visitors use, e.g. webinar.kingdomsolutionsai.com. Emails use this for the logo and download links, so set it once you publish."
               : key === "joinUrl"
-                ? "Where registrants join the live session, e.g. your Zoom link."
-                : null;
+                ? "Where registrants join the live session. Only sent in the reminder emails; it never appears on the public page."
+                : key === "zoomPasscode"
+                  ? "Shown in the reminders beside the meeting ID, for anyone whose link does not open."
+                  : null;
           return (
             <div key={key} className={isUrlField ? "sm:col-span-2" : undefined}>
               <Label
@@ -222,6 +224,167 @@ function EventDetailsEditor() {
 }
 
 /* ------------------------------------------------------------------ *
+ * Brevo: reminders and follow-up letters
+ * ------------------------------------------------------------------ */
+
+function StatusLine({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-2.5 font-serif text-[15px] leading-relaxed text-ink/75">
+      <span
+        className={cn(
+          "mt-1.5 inline-block size-2 shrink-0 rounded-full",
+          ok ? "bg-green" : "bg-gold",
+        )}
+        aria-hidden="true"
+      />
+      <span>{children}</span>
+    </li>
+  );
+}
+
+function BrevoPanel() {
+  const utils = trpc.useUtils();
+  const { data: status } = trpc.brevo.status.useQuery();
+  const setup = trpc.brevo.setup.useMutation({
+    onSuccess: report => {
+      utils.brevo.status.invalidate();
+      if (report.ok) toast.success("Brevo is set up", { description: "See the details below." });
+      else toast.error("Brevo setup did not finish", { description: report.error });
+    },
+    onError: () => toast.error("Could not reach the server. Please try again."),
+  });
+  const tests = trpc.brevo.sendTests.useMutation({
+    onSuccess: report => {
+      utils.brevo.status.invalidate();
+      const failed = report.results.filter(r => !r.ok).length;
+      if (failed) toast.error(`${failed} test email(s) did not send`, { description: "See the details below." });
+      else toast.success(`${report.results.length} test emails sent to ${report.to}`);
+    },
+    onError: () => toast.error("Could not send the tests. Please try again."),
+  });
+
+  const last = setup.data ?? status?.lastSetup ?? null;
+  const lastTest = tests.data ?? status?.lastTest ?? null;
+
+  return (
+    <section className="border border-border bg-white">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-7 py-5">
+        <div>
+          <h2 className="font-display text-lg font-bold text-navy">Reminders and follow-up in Brevo</h2>
+          <p className="mt-1 max-w-2xl font-serif text-[15px] leading-relaxed text-ink/60">
+            Brevo sends every reminder and follow-up letter. Press <strong>Set up in Brevo</strong>{" "}
+            once now, and again whenever you change the date, the Zoom link, or add a replay link.
+            It is safe to press more than once.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => tests.mutate()}
+            disabled={tests.isPending || setup.isPending}
+            className="border-navy/25 bg-white font-sans text-[10px] font-bold uppercase tracking-[0.16em] text-navy hover:border-navy">
+            {tests.isPending ? <Loader2 className="mr-1.5 size-3 animate-spin" /> : <Mail className="mr-1.5 size-3" />}
+            Email me test copies
+          </Button>
+          <Button
+            onClick={() => setup.mutate()}
+            disabled={setup.isPending || tests.isPending}
+            className="bg-navy font-sans text-[10px] font-bold uppercase tracking-[0.16em] text-white hover:bg-navy-deep">
+            {setup.isPending ? <Loader2 className="mr-1.5 size-3 animate-spin" /> : <Send className="mr-1.5 size-3" />}
+            Set up in Brevo
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-8 px-7 py-6 lg:grid-cols-2">
+        <div>
+          <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/50">Ready to schedule?</p>
+          <ul className="mt-3 space-y-2">
+            <StatusLine ok={Boolean(status?.hasApiKey)}>
+              {status?.hasApiKey ? "Brevo key is connected" : "Brevo key is missing on Render"}
+            </StatusLine>
+            <StatusLine ok={Boolean(status?.event)}>
+              {status?.event
+                ? `Session: ${status.event.label}`
+                : `Cannot read the date and time ("${status?.dateText ?? ""}" / "${status?.timeText ?? ""}")`}
+            </StatusLine>
+            <StatusLine ok={Boolean(status?.hasJoinUrl)}>
+              {status?.hasJoinUrl ? "Zoom join link is saved" : "No Zoom join link saved above"}
+            </StatusLine>
+            <StatusLine ok={Boolean(status?.hasPasscode)}>
+              {status?.hasPasscode ? "Zoom passcode is saved" : "No Zoom passcode saved (optional)"}
+            </StatusLine>
+          </ul>
+        </div>
+
+        <div>
+          <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/50">
+            Last setup {last ? `· ${new Date(last.ranAt).toLocaleString()}` : ""}
+          </p>
+          {!last ? (
+            <p className="mt-3 font-serif text-[15px] italic text-ink/50">Not set up yet.</p>
+          ) : !last.ok ? (
+            <p className="mt-3 font-serif text-[15px] text-red-700">Stopped: {last.error}</p>
+          ) : (
+            <div className="mt-3 space-y-3 font-serif text-[15px] leading-relaxed text-ink/75">
+              <p>
+                {last.contacts.synced} registrant{last.contacts.synced === 1 ? "" : "s"} copied to Brevo
+                {last.contacts.failed ? `, ${last.contacts.failed} failed` : ""}.
+              </p>
+              <ul className="space-y-1.5">
+                {last.campaigns.map(c => (
+                  <li key={c.key} className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="font-semibold text-navy">{c.label}</span>
+                    <span className="text-ink/55">{c.scheduledFor}</span>
+                    <span
+                      className={cn(
+                        "border px-1.5 py-0.5 font-sans text-[9px] font-bold uppercase tracking-[0.12em]",
+                        c.status === "queued" ? "border-green/40 text-green" : "border-gold text-gold-dark",
+                      )}>
+                      {c.status === "queued" ? "scheduled" : c.status}
+                    </span>
+                    {c.note ? <span className="text-[13px] italic text-ink/50">{c.note}</span> : null}
+                  </li>
+                ))}
+              </ul>
+              {last.templates.length ? (
+                <p className="text-[14px] text-ink/60">
+                  Letters 1 to 3 are saved as Brevo templates (IDs {last.templates.map(t => t.id).join(", ")}) for the
+                  automation.
+                </p>
+              ) : null}
+              {last.warnings.map(w => (
+                <p key={w} className="text-[14px] text-gold-dark">
+                  {w}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {lastTest ? (
+        <div className="border-t border-border px-7 py-5">
+          <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/50">
+            Test copies sent to {lastTest.to} · {new Date(lastTest.ranAt).toLocaleString()}
+          </p>
+          <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
+            {lastTest.results.map(r => (
+              <StatusLine key={r.label} ok={r.ok}>
+                <span className="font-semibold text-navy">{r.label}</span>{" "}
+                <span className="text-[13px] text-ink/55">
+                  {r.ok ? (r.via === "brevo" ? "sent by Brevo" : r.detail) : `failed: ${r.detail}`}
+                </span>
+              </StatusLine>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ *
  * Follow-up sequence
  * ------------------------------------------------------------------ */
 
@@ -264,31 +427,8 @@ const POST_SESSION_LETTERS: { step: 5 | 6; title: string; blurb: string }[] = [
 ];
 
 function SequencePanel() {
-  const utils = trpc.useUtils();
-  const { data: status, isLoading } = trpc.sequence.status.useQuery();
+  const { data: status } = trpc.sequence.status.useQuery();
   const [previewing, setPreviewing] = useState<number | null>(null);
-
-  const setPaused = trpc.sequence.setPaused.useMutation({
-    onSuccess: result => {
-      toast.success(result.paused ? "Follow-up paused" : "Follow-up resumed");
-      utils.sequence.status.invalidate();
-    },
-    onError: () => toast.error("Could not change that. Please try again."),
-  });
-
-  const runNow = trpc.sequence.runNow.useMutation({
-    onSuccess: result => {
-      if (result.paused) {
-        toast.message("The sequence is paused, so nothing was sent.");
-      } else if (result.sent === 0) {
-        toast.message("Nobody is due a letter right now.");
-      } else {
-        toast.success(`Sent ${result.sent} letter${result.sent === 1 ? "" : "s"}`);
-      }
-      utils.sequence.status.invalidate();
-    },
-    onError: () => toast.error("Could not run the sequence. Please try again."),
-  });
 
   const preview = trpc.sequence.preview.useMutation({
     onMutate: variables => setPreviewing(variables.step),
@@ -300,57 +440,20 @@ function SequencePanel() {
     onSettled: () => setPreviewing(null),
   });
 
-  const paused = status?.paused ?? false;
-
   return (
     <section className="border border-border bg-white">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-7 py-5">
         <div>
           <h2 className="font-display text-lg font-bold text-navy">Follow-up sequence</h2>
           <p className="mt-1 max-w-2xl font-serif text-[15px] leading-relaxed text-ink/60">
-            Six letters. The first three are timed from each person's own signup date, so someone
-            who joins today receives the same welcome as someone who joined months ago. The last
-            three are timed from the session itself, so everyone moves through them together.
-            Nobody ever receives the same letter twice.
+            Six letters, now sent by Brevo. The first three go out 2, 7 and 14 days after each
+            person confirms, through the Brevo automation. The last three are scheduled for set
+            times after the session. Sent counts and opens are in Brevo. Preview sends any letter
+            to your own inbox.
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setPaused.mutate({ paused: !paused })}
-            disabled={setPaused.isPending}
-            className={cn(
-              "border-navy/25 bg-white font-sans text-[10px] font-bold uppercase tracking-[0.16em]",
-              paused ? "text-green hover:border-green" : "text-navy hover:border-navy",
-            )}>
-            {paused ? <Play className="mr-1.5 size-3" /> : <Pause className="mr-1.5 size-3" />}
-            {paused ? "Resume" : "Pause"}
-          </Button>
-          <Button
-            onClick={() => runNow.mutate()}
-            disabled={runNow.isPending || paused}
-            className="bg-navy font-sans text-[10px] font-bold uppercase tracking-[0.16em] text-white hover:bg-navy-deep">
-            {runNow.isPending ? (
-              <Loader2 className="mr-1.5 size-3 animate-spin" />
-            ) : (
-              <Send className="mr-1.5 size-3" />
-            )}
-            Send what is due
-          </Button>
         </div>
       </div>
 
-      {paused ? (
-        <div className="border-b border-gold/40 bg-gold-tint px-7 py-4">
-          <p className="font-serif text-[15px] leading-relaxed text-ink/75">
-            <span className="mr-2 border border-gold px-2 py-0.5 font-sans text-[9px] font-bold uppercase tracking-[0.14em] text-gold-dark">
-              Paused
-            </span>
-            No follow-up letters will be sent while this is paused. Signup emails still go out
-            exactly as before.
-          </p>
-        </div>
-      ) : null}
 
       <div className="divide-y divide-border">
         {[1, 2, 3].map(step => {
@@ -373,14 +476,6 @@ function SequencePanel() {
                 </p>
               </div>
               <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="font-sans text-[9px] font-semibold uppercase tracking-[0.16em] text-ink/45">
-                    Sent
-                  </p>
-                  <p className="mt-1 font-display text-2xl font-bold text-navy">
-                    {isLoading ? "—" : (stat?.sent ?? 0)}
-                  </p>
-                </div>
                 <button
                   type="button"
                   onClick={() => preview.mutate({ step: step as 1 | 2 | 3 })}
@@ -446,14 +541,6 @@ function SequencePanel() {
             ) : null}
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="font-sans text-[9px] font-semibold uppercase tracking-[0.16em] text-ink/45">
-                Sent
-              </p>
-              <p className="mt-1 font-display text-2xl font-bold text-navy">
-                {isLoading ? "—" : (status?.replay?.sent ?? 0)}
-              </p>
-            </div>
             <button
               type="button"
               onClick={() => preview.mutate({ step: 4 })}
@@ -497,14 +584,6 @@ function SequencePanel() {
                 </p>
               </div>
               <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="font-sans text-[9px] font-semibold uppercase tracking-[0.16em] text-ink/45">
-                    Sent
-                  </p>
-                  <p className="mt-1 font-display text-2xl font-bold text-navy">
-                    {isLoading ? "—" : (stat?.sent ?? 0)}
-                  </p>
-                </div>
                 <button
                   type="button"
                   onClick={() => preview.mutate({ step: letter.step })}
@@ -868,6 +947,7 @@ export default function Dashboard() {
 
         <EventDetailsEditor />
 
+        <BrevoPanel />
         <SequencePanel />
 
         {/* Registrations table */}
