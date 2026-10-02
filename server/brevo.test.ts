@@ -272,11 +272,29 @@ describe("the session-anchored schedule", () => {
   });
 
   it("sends each email at the right moment", () => {
+    expect(at("reminder-week")).toBe("2026-10-13T15:00:00.000Z"); // Tue Oct 13, 11:00 AM ET
     expect(at("reminder-day")).toBe("2026-10-19T15:00:00.000Z"); // Mon 11:00 AM ET
     expect(at("reminder-hour")).toBe("2026-10-20T14:00:00.000Z"); // Tue 10:00 AM ET
     expect(at("letter-4")).toBe("2026-10-21T13:00:00.000Z"); // Wed 9:00 AM ET
     expect(at("letter-5")).toBe("2026-10-23T15:00:00.000Z");
     expect(at("letter-6")).toBe("2026-10-27T15:00:00.000Z");
+  });
+
+  it("keeps the one-week reminder at 11 AM Eastern across a clock change", () => {
+    // Nov 1 2026 ends daylight saving, between Oct 27 and the Nov 3 session.
+    const nov3 = parseEventStart("Tuesday, November 3, 2026", "11:00 AM")!;
+    const week = planEventCampaigns({ baseUrl: SETTINGS.publicSiteUrl, settings: SETTINGS, start: nov3 })
+      .find(p => p.key === "reminder-week")!;
+    expect(week.at.toISOString()).toBe("2026-10-27T15:00:00.000Z"); // 11:00 AM EDT
+  });
+
+  it("puts the Zoom link, meeting ID and passcode in all three reminders", () => {
+    for (const key of ["reminder-week", "reminder-day", "reminder-hour"]) {
+      const html = plan.find(p => p.key === key)!.html;
+      expect(html).toContain(JOIN);
+      expect(html).toContain("831 5374 5263");
+      expect(html).toContain("480462");
+    }
   });
 
   it("uses standard time for the November session", () => {
@@ -313,7 +331,7 @@ describe("setting everything up in Brevo", () => {
     expect((brevo.contacts.get("confirmed@example.com")?.attributes as Record<string, string>).CHAPTER_OPENED).toBe("yes");
     expect(brevo.contacts.get("gone@example.com")?.emailBlacklisted).toBe(true);
     expect(brevo.templates.size).toBe(3);
-    expect(brevo.campaigns.size).toBe(5);
+    expect(brevo.campaigns.size).toBe(6);
     expect(report.campaigns.every(c => c.status === "queued")).toBe(true);
 
     const reminder = [...brevo.campaigns.values()].find(c => String(c.name).includes("day before"))!;
@@ -339,7 +357,7 @@ describe("setting everything up in Brevo", () => {
     expect(brevo.lists).toHaveLength(2);
     expect(brevo.folders).toHaveLength(1);
     expect([...brevo.templates.keys()]).toEqual(firstTemplates);
-    expect(brevo.campaigns.size).toBe(5); // old unsent ones replaced, not added to
+    expect(brevo.campaigns.size).toBe(6); // old unsent ones replaced, not added to
   });
 
   it("does not schedule reminders without a Zoom link, and says so", async () => {
@@ -349,7 +367,7 @@ describe("setting everything up in Brevo", () => {
 
     expect(report.ok).toBe(true);
     expect(brevo.campaigns.size).toBe(3);
-    expect(report.campaigns.filter(c => c.status === "not scheduled")).toHaveLength(2);
+    expect(report.campaigns.filter(c => c.status === "not scheduled")).toHaveLength(3);
     expect(report.warnings.join(" ")).toMatch(/Zoom join link/);
   });
 
@@ -358,6 +376,7 @@ describe("setting everything up in Brevo", () => {
     const { io } = makeIO(brevo, { now: () => new Date("2026-10-20T14:30:00Z") });
     const report = await setupBrevo({ io });
 
+    expect(report.campaigns.find(c => c.key === "reminder-week")?.status).toBe("skipped");
     expect(report.campaigns.find(c => c.key === "reminder-day")?.status).toBe("skipped");
     expect(report.campaigns.find(c => c.key === "reminder-hour")?.status).toBe("skipped");
     expect(brevo.campaigns.size).toBe(3);
@@ -381,8 +400,8 @@ describe("test copies", () => {
     const report = await sendBrevoTests({ io });
 
     expect(report.results.filter(r => !(r.ok && r.via === "brevo"))).toEqual([]);
-    expect(report.results).toHaveLength(8);
+    expect(report.results).toHaveLength(9);
     expect(report.results.every(r => r.ok && r.via === "brevo")).toBe(true);
-    expect(brevo.tests).toHaveLength(8);
+    expect(brevo.tests).toHaveLength(9);
   });
 });

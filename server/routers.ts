@@ -16,6 +16,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { confirmUrl, verifyConfirm } from "./confirm";
 import { sendAttendanceRewardEmail, sendConfirmEmail, sendEmail, sendSignupEmails } from "./email";
+import { seatBlock, upcomingSession } from "./reminders";
 import {
   claimSequenceStep,
   confirmRegistration,
@@ -129,6 +130,17 @@ function trackedUrlsFor(baseUrl: string, email: string) {
     checklist: trackedDownloadUrl(baseUrl, "checklist", email),
   };
 }
+
+/**
+ * The "your seat" block for the email sent after someone confirms: the date,
+ * Zoom link, meeting ID, passcode and calendar link, while the session is
+ * still ahead. Null before a date is set or once it has passed.
+ */
+function seatFor(settings: Record<string, string>) {
+  const session = upcomingSession(settings);
+  return session ? seatBlock(session) : undefined;
+}
+
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
@@ -184,6 +196,10 @@ export const appRouter = router({
             email: input.email,
             confirmUrl: confirmUrl(baseUrl, input.email),
             logoUrl: baseUrl ? `${baseUrl}${LION_MARK_URL}` : undefined,
+            sessionWhen: (() => {
+              const session = upcomingSession(storedForLinks);
+              return session ? seatBlock(session).when : undefined;
+            })(),
           });
           emailed = result.ok;
           await setRegistrationEmailStatus(
@@ -246,6 +262,7 @@ export const appRouter = router({
                 logoUrl: baseUrl ? `${baseUrl}${LION_MARK_URL}` : undefined,
                 unsubscribeUrl: unsubscribeUrl(baseUrl, row.email),
                 trackedUrls: trackedUrlsFor(baseUrl, row.email),
+                seat: seatFor(stored),
               });
               await setRegistrationEmailStatus(
                 row.email,
@@ -318,6 +335,7 @@ export const appRouter = router({
           logoUrl: `${baseUrl}${LION_MARK_URL}`,
           unsubscribeUrl: unsubscribeUrl(baseUrl, row.email),
           trackedUrls: trackedUrlsFor(baseUrl, row.email),
+          seat: seatFor(stored),
         });
         await setRegistrationEmailStatus(
           row.email,

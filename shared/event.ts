@@ -74,7 +74,7 @@ export const SAMPLE_CHAPTER = {
   url: "/downloads/Sample_Chapter_Part_One_84e9f7e6.pdf",
   filename: "What-Every-New-Entrepreneur-Needs-to-Know-Part-One.pdf",
   pages: 14,
-  title: "Part One — The Big Picture: What Makes a Business Work",
+  title: "Part One: The Big Picture, What Makes a Business Work",
 } as const;
 
 /**
@@ -206,7 +206,7 @@ export const EXERCISE_PROMPT = {
     "Read it back and ask one question: would the person I just described recognize themselves in it? That question has saved founders entire years.",
   reframeLabel: "If you cannot write it yet",
   reframe:
-    "That is not a failure — that is your diagnosis. It means the validation conversations in Part II are where your work begins, and knowing that is worth more than anything else you could take from today.",
+    "That is not a failure; that is your diagnosis. It means the validation conversations in Part II are where your work begins, and knowing that is worth more than anything else you could take from today.",
 } as const;
 
 export const MODE_COPY: Record<

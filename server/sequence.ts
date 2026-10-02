@@ -221,27 +221,52 @@ export type SequenceContext = {
 export function buildSequenceStepOne(ctx: SequenceContext) {
   const name = escapeHtml(ctx.firstName.trim() || "friend");
   const chapterUrl = ctx.chapterUrlOverride ?? trackedDownloadUrl(ctx.baseUrl, "chapter", ctx.email);
+  // Once a date is set, everyone reading this has already been told it, so the
+  // "you will hear the date first" promise would be wrong.
+  const hasDate = !isPlaceholder(ctx.eventDate);
+  const when = hasDate
+    ? [ctx.eventDate, ctx.eventTime].filter(v => v && !isPlaceholder(v)).join(" at ")
+    : "";
+  const openingHtml = hasDate
+    ? [
+        paragraph(`Before we meet, ${name}, I want to tell you what our time together is for.`),
+        paragraph(
+          `On ${escapeHtml(when)} we walk the whole sequence in order: the eight systems every business runs on, which one to build first, and where AI belongs once the human decisions are settled. Your Zoom link will come by email again the day before and one hour before we start, so keep an eye out.`,
+        ),
+      ]
+    : [
+        paragraph(
+          `When I said something was coming, ${name}, I meant it, and I would rather tell you now than surprise you later.`,
+        ),
+        paragraph(
+          `I am preparing a live session that walks the whole sequence in order: the eight systems every business runs on, which one to build first, and where AI belongs once the human decisions are settled. You are on the list, so you will get the date before it goes anywhere else.`,
+        ),
+      ];
+  const openingText = hasDate
+    ? [
+        `Before we meet, ${ctx.firstName.trim() || "friend"}, I want to tell you what our time together is for.`,
+        ``,
+        `On ${when} we walk the whole sequence in order: the eight systems every business runs on, which one to build first, and where AI belongs once the human decisions are settled. Your Zoom link will come by email again the day before and one hour before we start, so keep an eye out.`,
+      ]
+    : [
+        `When I said something was coming, ${ctx.firstName.trim() || "friend"}, I meant it.`,
+        ``,
+        `I am preparing a live session that walks the whole sequence in order: the eight systems every business runs on, which one to build first, and where AI belongs once the human decisions are settled. You are on the list, so you will get the date before it goes anywhere else.`,
+      ];
 
   const body = [
-    paragraph(
-      `When I said something was coming, ${name}, I meant it — and I would rather tell you now than surprise you later.`,
-    ),
-    paragraph(
-      `I am preparing a live session that walks the whole sequence in order: the eight systems every business runs on, which one to build first, and where AI belongs once the human decisions are settled. You are on the list, so you will get the date before it goes anywhere else.`,
-    ),
+    ...openingHtml,
     pullQuote(escapeHtml(CORE_PROMISE_SHORT)),
     paragraph(
       ctx.hasDownloaded
         ? `In the meantime, thank you for opening what I sent. If you have not reached the eight systems yet, that is the part I would not skip.`
-        : `In the meantime, the chapter is still sitting there unopened. I am not going to pretend that matters to me more than it matters to you — but Part One is the piece that shows you which of the eight systems is quietly limiting all the others, and it takes about twenty minutes.`,
+        : `In the meantime, the chapter is still sitting there unopened. I am not going to pretend that matters to me more than it matters to you. But Part One is the piece that shows you which of the eight systems is quietly limiting all the others, and it takes about twenty minutes.`,
     ),
     buttonRow(ctx.hasDownloaded ? "Open it again" : "Open Part One", chapterUrl),
   ].join("");
 
   const text = [
-    `When I said something was coming, ${ctx.firstName.trim() || "friend"}, I meant it.`,
-    ``,
-    `I am preparing a live session that walks the whole sequence in order: the eight systems every business runs on, which one to build first, and where AI belongs once the human decisions are settled. You are on the list, so you will get the date before it goes anywhere else.`,
+    ...openingText,
     ``,
     CORE_PROMISE_SHORT,
     ``,
@@ -258,10 +283,12 @@ export function buildSequenceStepOne(ctx: SequenceContext) {
   ].join("\n");
 
   return {
-    subject: "The thing I mentioned",
+    subject: hasDate ? "Before we meet" : "The thing I mentioned",
     html: shell({
-      preheader: "A live session is coming, and you will hear the date here first.",
-      heading: "About that something.",
+      preheader: hasDate
+        ? "What our time together is for, and what to read first."
+        : "A live session is coming, and you will hear the date here first.",
+      heading: hasDate ? "Before we meet." : "About that something.",
       bodyHtml: body,
       baseUrl: ctx.baseUrl,
       logoUrl: ctx.logoUrl,
@@ -289,18 +316,18 @@ export function buildSequenceStepTwo(ctx: SequenceContext) {
       <p style="margin:14px 0 0;font-family:${SERIF};font-size:17px;line-height:1.62;color:#FFFFFF;">${escapeHtml(EXERCISE_PROMPT.instruction)}</p>
     </td></tr></table></td></tr>`,
     paragraph(
-      `Most people cannot write it on the first attempt. I could not. That is not a verdict on your ability — it is information, and it is the most useful information you can have this early, because it tells you exactly where your work begins.`,
+      `Most people cannot write it on the first attempt. I could not. That is not a verdict on your ability. It is information, and it is the most useful information you can have this early, because it tells you exactly where your work begins.`,
     ),
     paragraph(escapeHtml(EXERCISE_PROMPT.check)),
     pullQuote(
       `If you cannot write it yet, that is not a failure. That is your diagnosis.`,
     ),
     paragraph(
-      `At the live session, I will hand you a page built for exactly this sentence — the First-Sale Readiness Checklist, yours the moment you show up. For now, just keep the sentence where you can find it.`,
+      `At the live session, I will hand you a page built for exactly this sentence: the First-Sale Readiness Checklist, yours the moment you show up. For now, just keep the sentence where you can find it.`,
     ),
     buttonRow(cta.label, cta.url),
     postscriptRow(
-      `P.S. — ${AUDIT_INVITATION.postscript}`,
+      `P.S. ${AUDIT_INVITATION.postscript}`,
       "Take the Capacity Leak Audit\u2122",
       AUDIT_INVITATION.url,
     ),
@@ -312,17 +339,17 @@ export function buildSequenceStepTwo(ctx: SequenceContext) {
     EXERCISE_PROMPT.heading.toUpperCase(),
     EXERCISE_PROMPT.instruction,
     ``,
-    `Most people cannot write it on the first attempt. I could not. That is not a verdict on your ability -- it is information, and it tells you where your work begins.`,
+    `Most people cannot write it on the first attempt. I could not. That is not a verdict on your ability. It is information, and it tells you where your work begins.`,
     ``,
     EXERCISE_PROMPT.check,
     ``,
     `If you cannot write it yet, that is not a failure. That is your diagnosis.`,
     ``,
-    `At the live session, I will hand you a page built for exactly this sentence -- the First-Sale Readiness Checklist, yours the moment you show up. For now, just keep the sentence where you can find it.`,
+    `At the live session, I will hand you a page built for exactly this sentence: the First-Sale Readiness Checklist, yours the moment you show up. For now, just keep the sentence where you can find it.`,
     ``,
     `${cta.label}: ${cta.url}`,
     ``,
-    `P.S. -- ${AUDIT_INVITATION.postscript}`,
+    `P.S. ${AUDIT_INVITATION.postscript}`,
     AUDIT_INVITATION.url,
     ``,
     `Lead well,`,
@@ -367,7 +394,7 @@ export function buildSequenceStepThree(ctx: SequenceContext) {
           <p style="margin:12px 0 0;font-family:${DISPLAY};font-size:22px;font-weight:700;color:${C.navy};">${escapeHtml(when)}</p>
         </td></tr></table></td></tr>`,
         paragraph(
-          `We walk the whole sequence in order — the eight systems, the order to build them in, the six steps that produce evidence before expense, and where AI belongs once the human decisions are made. You will leave knowing which stage you are actually at, which is usually not the stage people assume.`,
+          `We walk the whole sequence in order: the eight systems, the order to build them in, the six steps that produce evidence before expense, and where AI belongs once the human decisions are made. You will leave knowing which stage you are actually at, which is usually not the stage people assume.`,
         ),
         pullQuote(escapeHtml(CORE_PROMISE_SHORT)),
         buttonRow("Reserve your seat", ctx.baseUrl),
@@ -380,7 +407,7 @@ export function buildSequenceStepThree(ctx: SequenceContext) {
           `I am holding to that. The date is not fixed yet, and I would rather tell you that plainly than send you an invitation to something I cannot yet deliver. When it is set, this list hears first.`,
         ),
         paragraph(
-          `In the meantime, Part One remains yours, and the one-sentence exercise is still the most valuable four minutes available to you. The Readiness Checklist is waiting too — it is my thank-you for showing up when the session happens.`,
+          `In the meantime, Part One remains yours, and the one-sentence exercise is still the most valuable four minutes available to you. The Readiness Checklist is waiting too. It is my thank-you for showing up when the session happens.`,
         ),
         pullQuote(escapeHtml(CORE_PROMISE_SHORT)),
         buttonRow("Revisit Part One", chapterUrl),
@@ -390,7 +417,7 @@ export function buildSequenceStepThree(ctx: SequenceContext) {
     ? [
         `The date is set.`,
         ``,
-        `What Entrepreneurs Need to Know -- ${when}`,
+        `What Entrepreneurs Need to Know: ${when}`,
         ``,
         `We walk the whole sequence in order: the eight systems, the order to build them in, the six steps that produce evidence before expense, and where AI belongs once the human decisions are made.`,
         ``,
@@ -403,7 +430,7 @@ export function buildSequenceStepThree(ctx: SequenceContext) {
         ``,
         `The date is not fixed yet, and I would rather tell you plainly than send an invitation to something I cannot yet deliver. When it is set, this list hears first.`,
         ``,
-        `Part One remains yours, and the one-sentence exercise is still the most valuable four minutes available to you. The Readiness Checklist is waiting too -- my thank-you for showing up when the session happens.`,
+        `Part One remains yours, and the one-sentence exercise is still the most valuable four minutes available to you. The Readiness Checklist is waiting too. It is my thank-you for showing up when the session happens.`,
         ``,
         CORE_PROMISE_SHORT,
         ``,
@@ -453,7 +480,7 @@ export function buildPostSessionLetter(ctx: SequenceContext) {
 
   const body = [
     paragraph(
-      `Three days on, ${name}, I want to name something I have watched happen many times — including to me.`,
+      `Three days on, ${name}, I want to name something I have watched happen many times, including to me.`,
     ),
     paragraph(
       `A session like that one does not usually leave people disagreeing. It leaves them agreeing with all of it and then stalling, because agreeing with eight systems is not the same as knowing which one is yours to touch on Monday morning.`,
@@ -463,7 +490,7 @@ export function buildPostSessionLetter(ctx: SequenceContext) {
       `If you have written your sentence and taken one step, you do not need anything else from me this week. Keep going.`,
     ),
     paragraph(
-      `If you have not, the reason is almost certainly not laziness and almost certainly not lack of ability. It is that nothing has told you where to begin. That is a solvable problem, and it is the only problem the Capacity Leak Audit\u2122 tries to solve — it names which of the five areas is actually holding you back, so your next month goes to one thing instead of all of them.`,
+      `If you have not, the reason is almost certainly not laziness and almost certainly not lack of ability. It is that nothing has told you where to begin. That is a solvable problem, and it is the only problem the Capacity Leak Audit\u2122 tries to solve. It names which of the five areas is actually holding you back, so your next month goes to one thing instead of all of them.`,
     ),
     buttonRow("Find out what to fix first", AUDIT_INVITATION.url),
   ].join("");
@@ -518,7 +545,7 @@ export function buildFinalLetter(ctx: SequenceContext) {
 
   const body = [
     paragraph(
-      `This is the last of these letters, ${name}. I would rather tell you that than keep arriving in your inbox indefinitely — you are carrying enough.`,
+      `This is the last of these letters, ${name}. I would rather tell you that than keep arriving in your inbox indefinitely. You are carrying enough.`,
     ),
     paragraph(remainsYours),
     pullQuote(escapeHtml(CORE_PROMISE_SHORT)),
@@ -530,14 +557,14 @@ export function buildFinalLetter(ctx: SequenceContext) {
     ),
     buttonRow("Read Part One again", chapterUrl),
     postscriptRow(
-      `P.S. — If you would rather start with a diagnosis than a decision:`,
+      `P.S. If you would rather start with a diagnosis than a decision:`,
       "Take the Capacity Leak Audit\u2122",
       AUDIT_INVITATION.url,
     ),
   ].join("");
 
   const text = [
-    `This is the last of these letters. I would rather tell you that than keep arriving in your inbox indefinitely -- you are carrying enough.`,
+    `This is the last of these letters. I would rather tell you that than keep arriving in your inbox indefinitely. You are carrying enough.`,
     ``,
     remainsYours,
     ``,
@@ -549,7 +576,7 @@ export function buildFinalLetter(ctx: SequenceContext) {
     ``,
     `Read Part One again: ${chapterUrl}`,
     ``,
-    `P.S. -- If you would rather start with a diagnosis than a decision: ${AUDIT_INVITATION.url}`,
+    `P.S. If you would rather start with a diagnosis than a decision: ${AUDIT_INVITATION.url}`,
     ``,
     `Lead well,`,
     `Tabitha Rector`,
@@ -598,7 +625,7 @@ export function buildReplayLetter(ctx: SequenceContext) {
         `Yesterday we walked the whole sequence, ${name}. If you were there, thank you for giving me that time. If you were not, the recording is below and nothing was held back from it.`,
       )
     : paragraph(
-        `Yesterday we walked the whole sequence, ${name}. If you were there, thank you for giving me that time. If life got in the way, I am not going to make you feel badly about it — so here is the part that mattered most, in writing.`,
+        `Yesterday we walked the whole sequence, ${name}. If you were there, thank you for giving me that time. If life got in the way, I am not going to make you feel badly about it, so here is the part that mattered most, in writing.`,
       );
 
   const body = [
@@ -614,10 +641,10 @@ export function buildReplayLetter(ctx: SequenceContext) {
     paragraph(escapeHtml(EXERCISE_PROMPT.reframe)),
     pullQuote(escapeHtml(CORE_PROMISE_SHORT)),
     paragraph(
-      `If you attended, your checklist is either already in your inbox or on its way — that is handled separately, so there is no link to hunt for here. If you write nothing else this week, write that sentence.`,
+      `If you attended, your checklist is either already in your inbox or on its way. That is handled separately, so there is no link to hunt for here. If you write nothing else this week, write that sentence.`,
     ),
     postscriptRow(
-      `P.S. — ${AUDIT_INVITATION.postscript}`,
+      `P.S. ${AUDIT_INVITATION.postscript}`,
       "Take the Capacity Leak Audit\u2122",
       AUDIT_INVITATION.url,
     ),
@@ -638,9 +665,9 @@ export function buildReplayLetter(ctx: SequenceContext) {
     ``,
     CORE_PROMISE_SHORT,
     ``,
-    `If you attended, your checklist is either already in your inbox or on its way -- that is handled separately, so there is no link to hunt for here. If you write nothing else this week, write that sentence.`,
+    `If you attended, your checklist is either already in your inbox or on its way. That is handled separately, so there is no link to hunt for here. If you write nothing else this week, write that sentence.`,
     ``,
-    `P.S. -- ${AUDIT_INVITATION.postscript}`,
+    `P.S. ${AUDIT_INVITATION.postscript}`,
     AUDIT_INVITATION.url,
     ``,
     `Lead well,`,

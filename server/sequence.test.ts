@@ -346,3 +346,31 @@ describe("letter content", () => {
   });
 });
 
+
+describe("letter one once a date is set", () => {
+  it("does not promise a date the reader already has", async () => {
+    const { buildSequenceStepOne } = await import("./sequence");
+    const letter = buildSequenceStepOne({
+      firstName: "Ada",
+      email: "ada@example.com",
+      baseUrl: "https://example.com",
+      eventDate: "Tuesday, October 20, 2026",
+      eventTime: "11:00 AM",
+      chapterUrlOverride: "https://example.com/part-one",
+    });
+    expect(letter.html).not.toContain("you will get the date before it goes anywhere else");
+    expect(letter.html).toContain("Tuesday, October 20, 2026 at 11:00 AM");
+    expect(letter.subject).toBe("Before we meet");
+  });
+
+  it("keeps the original wording before a date exists", async () => {
+    const { buildSequenceStepOne } = await import("./sequence");
+    const letter = buildSequenceStepOne({
+      firstName: "Ada",
+      email: "ada@example.com",
+      baseUrl: "https://example.com",
+      chapterUrlOverride: "https://example.com/part-one",
+    });
+    expect(letter.html).toContain("you will get the date before it goes anywhere else");
+  });
+});

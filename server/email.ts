@@ -60,8 +60,18 @@ function escapeHtml(value: string) {
  * confirm link — Part One is not attached and not linked here, on purpose, so
  * an unverified address can never receive the file.
  */
-export function buildConfirmEmail(input: { firstName: string; confirmUrl: string; logoUrl?: string }) {
+export function buildConfirmEmail(input: {
+  firstName: string;
+  confirmUrl: string;
+  logoUrl?: string;
+  /** "Tuesday, October 20, 2026 at 11:00 AM ET" while a session is upcoming. */
+  sessionWhen?: string;
+}) {
   const name = escapeHtml(input.firstName.trim() || "friend");
+  const when = input.sessionWhen?.trim();
+  const ask = when
+    ? `Please confirm this is your email address so I can save your seat for ${when}. One click and your Zoom link and Part One of the book are sent straight to this inbox.`
+    : `Please confirm this is your email address so I know Part One of the book is going somewhere real. Nothing else needs to happen. One click and the file is sent straight to this inbox.`;
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -70,7 +80,7 @@ export function buildConfirmEmail(input: { firstName: string; confirmUrl: string
 <title>Confirm your email</title>
 </head>
 <body style="margin:0;padding:0;background-color:${C.goldTint};">
-<div style="display:none;font-size:1px;color:${C.goldTint};max-height:0;overflow:hidden;">One click and Part One is on its way.</div>
+<div style="display:none;font-size:1px;color:${C.goldTint};max-height:0;overflow:hidden;">${when ? "One click saves your seat and sends your Zoom link." : "One click and Part One is on its way."}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.goldTint};padding:28px 12px;">
 <tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:${C.paper};">
@@ -90,7 +100,7 @@ export function buildConfirmEmail(input: { firstName: string; confirmUrl: string
     <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">One click, ${name}, and it's on its way.</h1>
     <div style="width:52px;height:3px;background-color:${C.gold};margin:18px 0 0;"></div>
     <p style="margin:22px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
-      Please confirm this is your email address so I know Part One of the book is going somewhere real. Nothing else needs to happen &mdash; one click and the file is sent straight to this inbox.
+      ${escapeHtml(ask)}
     </p>
   </td></tr>
   <!-- CTA -->
@@ -130,7 +140,7 @@ export function buildConfirmEmail(input: { firstName: string; confirmUrl: string
   const text = [
     `One click, ${input.firstName.trim() || "friend"}, and it's on its way.`,
     ``,
-    `Please confirm this is your email address so I know Part One of the book is going somewhere real. Nothing else needs to happen -- one click and the file is sent straight to this inbox.`,
+    ask,
     ``,
     `Confirm my email: ${input.confirmUrl}`,
     ``,
@@ -140,7 +150,11 @@ export function buildConfirmEmail(input: { firstName: string; confirmUrl: string
     `Tabitha Rector`,
     `Founder, Kingdom Solutions AI(TM)`,
   ].join("\n");
-  return { subject: "Confirm your email for Part One", html, text };
+  return {
+    subject: when ? "Confirm your email to save your seat" : "Confirm your email for Part One",
+    html,
+    text,
+  };
 }
 /** Sends the confirmation email. Never throws — same contract as sendEmail. */
 export async function sendConfirmEmail(input: {
@@ -149,11 +163,13 @@ export async function sendConfirmEmail(input: {
   email: string;
   confirmUrl: string;
   logoUrl?: string;
+  sessionWhen?: string;
 }): Promise<EmailResult> {
   const message = buildConfirmEmail({
     firstName: input.firstName,
     confirmUrl: input.confirmUrl,
     logoUrl: input.logoUrl,
+    sessionWhen: input.sessionWhen,
   });
   return sendEmail({
     to: { email: input.email, name: `${input.firstName} ${input.lastName}`.trim() },
@@ -177,8 +193,13 @@ export function buildRegistrantEmail(input: {
    * used, so a missing tracker can never produce a dead link.
    */
   trackedUrls?: { chapter: string; checklist?: string };
+  /**
+   * The "your seat" rows (date, Zoom link, meeting ID, passcode, calendar
+   * link) while a session is upcoming. Absent means Part One only.
+   */
+  seat?: { when: string; html: string; text: string[] };
 }) {
-  const { firstName, baseUrl } = input;
+  const { firstName, baseUrl, seat } = input;
   const chapterUrl = input.trackedUrls?.chapter ?? absolute(baseUrl, SAMPLE_CHAPTER.url);
   const name = escapeHtml(firstName.trim() || "friend");
   const html = `<!doctype html>
@@ -189,7 +210,7 @@ export function buildRegistrantEmail(input: {
 <title>Part One is inside</title>
 </head>
 <body style="margin:0;padding:0;background-color:${C.goldTint};">
-<div style="display:none;font-size:1px;color:${C.goldTint};max-height:0;overflow:hidden;">Part One is inside, plus the one question worth four minutes.</div>
+<div style="display:none;font-size:1px;color:${C.goldTint};max-height:0;overflow:hidden;">${seat ? "Your seat is saved. Your Zoom link and Part One are inside." : "Part One is inside, plus the one question worth four minutes."}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.goldTint};padding:28px 12px;">
 <tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:${C.paper};">
@@ -206,11 +227,23 @@ export function buildRegistrantEmail(input: {
   <tr><td style="height:3px;background-color:${C.gold};line-height:3px;font-size:0;">&nbsp;</td></tr>
   <!-- Greeting -->
   <tr><td style="padding:38px 36px 0;">
-    <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">Part One is inside, ${name}.</h1>
+    <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">${seat ? `Your seat is saved, ${name}.` : `Part One is inside, ${name}.`}</h1>
     <div style="width:52px;height:3px;background-color:${C.gold};margin:18px 0 0;"></div>
-    <p style="margin:22px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
-      Nothing has been held back. This is the complete, unabridged chapter — not a teaser.
+    ${
+      seat
+        ? `<p style="margin:22px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
+      You're confirmed for <em>What Entrepreneurs Need to Know</em>. Save this email, because everything you need to join is right here.
     </p>
+  </td></tr>
+  ${seat.html}
+  <tr><td style="padding:30px 36px 0;">
+    <p style="margin:0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
+      Part One of the book is below, and nothing has been held back. This is the complete, unabridged chapter, not a teaser.
+    </p>`
+        : `<p style="margin:22px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
+      Nothing has been held back. This is the complete, unabridged chapter, not a teaser.
+    </p>`
+    }
     <p style="margin:16px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
       Before you open it, I would like to give you the four minutes that matter most.
     </p>
@@ -234,7 +267,7 @@ export function buildRegistrantEmail(input: {
       </td></tr>
     </table>
     <p style="margin:16px 0 0;font-family:${SERIF};font-size:16px;line-height:1.6;color:${C.muted};">
-      At the live session, I will hand you a page built for exactly this sentence — the First-Sale Readiness Checklist. It is yours the moment you show up.
+      At the live session, I will hand you a page built for exactly this sentence: the First-Sale Readiness Checklist. It is yours the moment you show up.
     </p>
   </td></tr>
   <!-- The resource -->
@@ -253,8 +286,8 @@ export function buildRegistrantEmail(input: {
       </td></tr>
     </table>
   </td></tr>
-  <!-- Something coming -->
-  <tr><td style="padding:30px 36px 0;">
+  <!-- Something coming (only before a date is set) -->
+  ${seat ? "" : `<tr><td style="padding:30px 36px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
       <tr><td style="border-left:3px solid ${C.green};padding:4px 0 4px 18px;">
         <p style="margin:0;font-family:${SERIF};font-size:16px;line-height:1.62;color:${C.body};">
@@ -262,7 +295,7 @@ export function buildRegistrantEmail(input: {
         </p>
       </td></tr>
     </table>
-  </td></tr>
+  </td></tr>`}
   <!-- Signature -->
   <tr><td style="padding:32px 36px 38px;">
     <p style="margin:0;font-family:${SERIF};font-size:17px;line-height:1.6;color:${C.body};">Lead well,</p>
@@ -291,9 +324,21 @@ export function buildRegistrantEmail(input: {
 </body>
 </html>`;
   const text = [
-    `Part One is inside, ${firstName.trim() || "friend"}.`,
-    ``,
-    `Nothing has been held back. This is the complete, unabridged chapter -- not a teaser.`,
+    ...(seat
+      ? [
+          `Your seat is saved, ${firstName.trim() || "friend"}.`,
+          ``,
+          `You're confirmed for What Entrepreneurs Need to Know. Save this email, because everything you need to join is right here.`,
+          ``,
+          ...seat.text,
+          ``,
+          `Part One of the book is below, and nothing has been held back. This is the complete, unabridged chapter, not a teaser.`,
+        ]
+      : [
+          `Part One is inside, ${firstName.trim() || "friend"}.`,
+          ``,
+          `Nothing has been held back. This is the complete, unabridged chapter, not a teaser.`,
+        ]),
     ``,
     `Before you open it, here are the four minutes that matter most.`,
     ``,
@@ -304,13 +349,14 @@ export function buildRegistrantEmail(input: {
     ``,
     `${EXERCISE_PROMPT.reframeLabel}: ${EXERCISE_PROMPT.reframe}`,
     ``,
-    `At the live session, I will hand you a page built for exactly this sentence -- the First-Sale Readiness Checklist. It is yours the moment you show up.`,
+    `At the live session, I will hand you a page built for exactly this sentence: the First-Sale Readiness Checklist. It is yours the moment you show up.`,
     ``,
     `YOUR RESOURCE`,
     `${SAMPLE_CHAPTER.title}: ${chapterUrl}`,
     ``,
-    `One more thing. I am preparing something for the people on this list, and you will hear about it here first. More soon.`,
-    ``,
+    ...(seat
+      ? []
+      : [`One more thing. I am preparing something for the people on this list, and you will hear about it here first. More soon.`, ``]),
     `Lead well,`,
     `Tabitha Rector`,
     `Founder, Kingdom Solutions AI(TM)`,
@@ -320,7 +366,7 @@ export function buildRegistrantEmail(input: {
       : []),
   ].join("\n");
   return {
-    subject: "Part One is inside",
+    subject: seat ? `You're registered: ${seat.when}. Your Zoom link is inside` : "Part One is inside",
     html,
     text,
   };
@@ -373,7 +419,7 @@ export function buildAttendanceRewardEmail(input: {
     <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">Thank you for being there, ${name}.</h1>
     <div style="width:52px;height:3px;background-color:${C.gold};margin:18px 0 0;"></div>
     <p style="margin:22px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
-      Showing up is worth more than it feels like in the moment. As promised, here is the First-Sale Readiness Checklist &mdash; yours because you actually gave the session your time.
+      Showing up is worth more than it feels like in the moment. As promised, here is the First-Sale Readiness Checklist, yours because you actually gave the session your time.
     </p>
   </td></tr>
   <!-- The resource -->
@@ -383,7 +429,7 @@ export function buildAttendanceRewardEmail(input: {
         <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#9A7B12;">Your reward for showing up</div>
         <p style="margin:11px 0 0;font-family:${DISPLAY};font-size:19px;line-height:1.3;font-weight:700;color:${C.navy};">${escapeHtml(READINESS_CHECKLIST.title)}</p>
         <p style="margin:7px 0 0;font-family:${SANS};font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:${C.muted};">${READINESS_CHECKLIST.pages} pages · ${READINESS_CHECKLIST.fields} fillable fields</p>
-        <p style="margin:13px 0 0;font-family:${SERIF};font-size:16px;line-height:1.62;color:${C.body};">Fourteen conditions to meet before you take money from a client, plus the eight-system scoring diagnostic and a page for the one sentence from the close of the session. Type your answers straight into it and save the file &mdash; nothing to print.</p>
+        <p style="margin:13px 0 0;font-family:${SERIF};font-size:16px;line-height:1.62;color:${C.body};">Fourteen conditions to meet before you take money from a client, plus the eight-system scoring diagnostic and a page for the one sentence from the close of the session. Type your answers straight into it and save the file. There is nothing to print.</p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
           <tr><td style="background-color:${C.ink};">
             <a href="${checklistUrl}" style="display:inline-block;padding:14px 26px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${C.gold};text-decoration:none;">Download the checklist</a>
@@ -419,7 +465,7 @@ export function buildAttendanceRewardEmail(input: {
   const text = [
     `Thank you for being there, ${firstName.trim() || "friend"}.`,
     ``,
-    `Showing up is worth more than it feels like in the moment. As promised, here is the First-Sale Readiness Checklist -- yours because you actually gave the session your time.`,
+    `Showing up is worth more than it feels like in the moment. As promised, here is the First-Sale Readiness Checklist, yours because you actually gave the session your time.`,
     ``,
     `${READINESS_CHECKLIST.title}: ${checklistUrl}`,
     ``,
@@ -587,6 +633,7 @@ export async function sendSignupEmails(input: {
   total?: number;
   unsubscribeUrl?: string;
   trackedUrls?: { chapter: string; checklist?: string };
+  seat?: { when: string; html: string; text: string[] };
 }): Promise<EmailResult> {
   const registrant = buildRegistrantEmail({
     firstName: input.firstName,
@@ -594,6 +641,7 @@ export async function sendSignupEmails(input: {
     logoUrl: input.logoUrl,
     unsubscribeUrl: input.unsubscribeUrl,
     trackedUrls: input.trackedUrls,
+    seat: input.seat,
   });
   const result = await sendEmail({
     to: { email: input.email, name: `${input.firstName} ${input.lastName}`.trim() },

@@ -7,7 +7,7 @@ import {
   parseDurationMinutes,
   parseEventStart,
 } from "./eventTime";
-import { buildDayBeforeReminder, buildHourBeforeReminder, type ReminderContext } from "./reminders";
+import { buildDayBeforeReminder, buildHourBeforeReminder, buildWeekBeforeReminder, type ReminderContext } from "./reminders";
 import {
   buildFinalLetter,
   buildPostSessionLetter,
@@ -361,7 +361,7 @@ function pick(letter: { subject: string; html: string }) {
 }
 
 export type PlannedCampaign = {
-  key: "reminder-day" | "reminder-hour" | "letter-4" | "letter-5" | "letter-6";
+  key: "reminder-week" | "reminder-day" | "reminder-hour" | "letter-4" | "letter-5" | "letter-6";
   label: string;
   list: "all" | "nurture";
   at: Date;
@@ -369,7 +369,22 @@ export type PlannedCampaign = {
   html: string;
 };
 
-/** The five session-anchored emails, with the exact moment each should send. */
+/**
+ * The same Eastern wall-clock time a number of days away. Plain 24-hour
+ * arithmetic would drift by an hour when daylight saving changes in between.
+ */
+function sameEasternClock(start: Date, days: number): Date {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(start);
+  const get = (type: string) => Number(parts.find(p => p.type === type)?.value ?? "0");
+  return easternDayAfter(start, days, get("hour"), get("minute"));
+}
+
+/** The six session-anchored emails, with the exact moment each should send. */
 export function planEventCampaigns(input: {
   baseUrl: string;
   settings: Record<string, string>;
@@ -389,6 +404,7 @@ export function planEventCampaigns(input: {
     passcode: (settings.zoomPasscode ?? "").trim() || undefined,
   };
   const letterCtx = brevoLetterContext(baseUrl, settings);
+  const weekBefore = buildWeekBeforeReminder(reminderCtx);
   const dayBefore = buildDayBeforeReminder(reminderCtx);
   const hourBefore = buildHourBeforeReminder(reminderCtx);
   const replay = buildReplayLetter(letterCtx);
@@ -396,6 +412,7 @@ export function planEventCampaigns(input: {
   const sixAttended = buildFinalLetter({ ...letterCtx, attended: true });
   const sixMissed = buildFinalLetter({ ...letterCtx, attended: false });
   return [
+    { key: "reminder-week", label: "Reminder: one week before", list: "all", at: sameEasternClock(start, -7), ...pick(weekBefore) },
     { key: "reminder-day", label: "Reminder: the day before", list: "all", at: new Date(start.getTime() - day), ...pick(dayBefore) },
     { key: "reminder-hour", label: "Reminder: one hour before", list: "all", at: new Date(start.getTime() - hour), ...pick(hourBefore) },
     { key: "letter-4", label: "Letter 4: the morning after", list: "all", at: easternDayAfter(start, 1, 9), ...pick(replay) },
@@ -741,6 +758,7 @@ export async function sendBrevoTests(options: { requestOrigin?: string; io?: Bre
       passcode: (settings.zoomPasscode ?? "").trim() || undefined,
     };
     const eventEmails: Record<string, { label: string; build: () => { subject: string; html: string; text: string } }> = {
+      "reminder-week": { label: "Reminder: one week before", build: () => buildWeekBeforeReminder(reminderCtx) },
       "reminder-day": { label: "Reminder: the day before", build: () => buildDayBeforeReminder(reminderCtx) },
       "reminder-hour": { label: "Reminder: one hour before", build: () => buildHourBeforeReminder(reminderCtx) },
       "letter-4": { label: "Letter 4: the morning after", build: () => buildReplayLetter(directCtx) },

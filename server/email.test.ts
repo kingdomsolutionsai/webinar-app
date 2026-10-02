@@ -271,3 +271,63 @@ describe("sendEmail", () => {
     expect(bodies[0].headers).toBeUndefined();
   });
 });
+
+describe("the email sent after someone confirms, once a session is set", () => {
+  const settings = {
+    date: "Tuesday, October 20, 2026",
+    time: "11:00 AM",
+    duration: "60 minutes",
+    joinUrl: "https://us06web.zoom.us/j/83153745263?pwd=lGvfk21qK8g6QaUmamKTwmqxUZTeda.1",
+    zoomPasscode: "480462",
+  };
+
+  it("carries the date, Zoom link, meeting ID, passcode and calendar link", async () => {
+    const { seatBlock, upcomingSession } = await import("./reminders");
+    const session = upcomingSession(settings, new Date("2026-10-02T12:00:00Z"))!;
+    const mail = buildRegistrantEmail({ firstName: "Ada", baseUrl: BASE, seat: seatBlock(session) });
+    for (const part of [mail.html, mail.text]) {
+      expect(part).toContain("Tuesday, October 20, 2026 at 11:00 AM ET");
+      expect(part).toContain(settings.joinUrl.replace(/&/g, "&amp;").split("?")[0]);
+      expect(part).toContain("831 5374 5263");
+      expect(part).toContain("480462");
+      expect(part).toContain("calendar.google.com");
+    }
+    expect(mail.subject).toContain("Your Zoom link is inside");
+    // Part One still comes with it.
+    expect(mail.html).toContain(`${BASE}${SAMPLE_CHAPTER.url}`);
+    // The "something is coming" teaser makes no sense once they have a seat.
+    expect(mail.html).not.toContain("I am preparing something");
+  });
+
+  it("says nothing about a session once it has passed", async () => {
+    const { upcomingSession } = await import("./reminders");
+    expect(upcomingSession(settings, new Date("2026-10-21T12:00:00Z"))).toBeNull();
+  });
+
+  it("still shows the date, without a dead button, if no Zoom link is saved", async () => {
+    const { seatBlock, upcomingSession } = await import("./reminders");
+    const session = upcomingSession({ ...settings, joinUrl: "" }, new Date("2026-10-02T12:00:00Z"))!;
+    const mail = buildRegistrantEmail({ firstName: "Ada", baseUrl: BASE, seat: seatBlock(session) });
+    expect(mail.html).toContain("Tuesday, October 20, 2026 at 11:00 AM ET");
+    expect(mail.html).not.toContain("Join on Zoom");
+    expect(mail.html).toContain("Your Zoom link will arrive by email");
+  });
+
+  it("names the session in the confirm-your-email message", async () => {
+    const { buildConfirmEmail } = await import("./email");
+    const mail = buildConfirmEmail({
+      firstName: "Ada",
+      confirmUrl: `${BASE}/confirm?e=a&t=b`,
+      sessionWhen: "Tuesday, October 20, 2026 at 11:00 AM ET",
+    });
+    expect(mail.html).toContain("save your seat for Tuesday, October 20, 2026 at 11:00 AM ET");
+    expect(mail.subject).toBe("Confirm your email to save your seat");
+  });
+
+  it("contains no em dashes in any email copy", async () => {
+    const { seatBlock, upcomingSession } = await import("./reminders");
+    const session = upcomingSession(settings, new Date("2026-10-02T12:00:00Z"))!;
+    const mail = buildRegistrantEmail({ firstName: "Ada", baseUrl: BASE, seat: seatBlock(session) });
+    expect(mail.html + mail.text).not.toMatch(/—|&mdash;/);
+  });
+});

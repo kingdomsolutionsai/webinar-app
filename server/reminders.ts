@@ -1,9 +1,10 @@
-import { READINESS_CHECKLIST } from "../shared/event";
-import { formatEastern, formatEasternClock } from "./eventTime";
-import { C, DISPLAY, SANS, SERIF, buttonRow, escapeHtml, paragraph, shell } from "./sequence";
+import { CORE_PROMISE_SHORT, READINESS_CHECKLIST } from "../shared/event";
+import { formatEastern, formatEasternClock, parseDurationMinutes, parseEventStart } from "./eventTime";
+import { C, DISPLAY, SANS, SERIF, buttonRow, escapeHtml, paragraph, pullQuote, shell } from "./sequence";
 
 /**
- * The two pre-session reminders: the day before, and one hour before.
+ * The three pre-session reminders: one week before, the day before, and one
+ * hour before.
  *
  * Both carry the Zoom link, the meeting ID and the passcode, so someone whose
  * link misbehaves can still get in by typing the numbers. Nothing here is
@@ -84,7 +85,137 @@ function signOffText(ctx: ReminderContext): string[] {
   ];
 }
 
-/** Reminder one: the day before. */
+/* ------------------------------------------------------------------ *
+ * The confirmation email's "your seat" block
+ * ------------------------------------------------------------------ */
+
+export type SessionDetails = {
+  start: Date;
+  durationMinutes: number;
+  joinUrl: string;
+  passcode?: string;
+};
+
+/**
+ * The session as the dashboard describes it, but only while it is still ahead.
+ * A past date returns null, so nobody who confirms after the session is told
+ * to join a meeting that has already happened.
+ */
+export function upcomingSession(settings: Record<string, string>, now: Date = new Date()): SessionDetails | null {
+  const start = parseEventStart(settings.date, settings.time);
+  if (!start || start.getTime() <= now.getTime()) return null;
+  return {
+    start,
+    durationMinutes: parseDurationMinutes(settings.duration),
+    joinUrl: (settings.joinUrl ?? "").trim(),
+    passcode: (settings.zoomPasscode ?? "").trim() || undefined,
+  };
+}
+
+/**
+ * Date, Zoom button, meeting ID, passcode and calendar link, as rows that drop
+ * straight into the confirmation email. Without a saved join link it still
+ * shows the date and says the link is coming, rather than a dead button.
+ */
+export function seatBlock(session: SessionDetails): { when: string; html: string; text: string[] } {
+  const ctx: ReminderContext = { firstName: "", baseUrl: "", ...session };
+  const when = formatEastern(session.start);
+  const calendarUrl = googleCalendarUrl(ctx);
+  const calendarRow = `<tr><td style="padding:14px 36px 0;"><p style="margin:0;font-family:${SANS};font-size:13px;"><a href="${escapeHtml(calendarUrl)}" style="color:${C.navy};text-decoration:underline;">Add it to your Google Calendar</a></p></td></tr>`;
+  if (!session.joinUrl) {
+    return {
+      when,
+      html: [
+        sessionCard(ctx),
+        calendarRow,
+        paragraph(`Your Zoom link will arrive by email one week before, the day before, and one hour before we start.`),
+      ].join(""),
+      text: [
+        `What Entrepreneurs Need to Know`,
+        when,
+        `${session.durationMinutes} minutes, live on Zoom`,
+        ``,
+        `Add it to your Google Calendar: ${calendarUrl}`,
+        ``,
+        `Your Zoom link will arrive by email one week before, the day before, and one hour before we start.`,
+      ],
+    };
+  }
+  return {
+    when,
+    html: [
+      sessionCard(ctx),
+      buttonRow("Join on Zoom", session.joinUrl),
+      zoomDetails(ctx),
+      calendarRow,
+      paragraph(`I will send this link again one week before, the day before, and one hour before we start, so you will not have to hunt for it.`),
+    ].join(""),
+    text: [
+      `What Entrepreneurs Need to Know`,
+      when,
+      `${session.durationMinutes} minutes, live on Zoom`,
+      ``,
+      `Join on Zoom: ${session.joinUrl}`,
+      ...zoomDetailsText(ctx),
+      ``,
+      `Add it to your Google Calendar: ${calendarUrl}`,
+      ``,
+      `I will send this link again one week before, the day before, and one hour before we start, so you will not have to hunt for it.`,
+    ],
+  };
+}
+
+/** The first reminder: one week before. */
+export function buildWeekBeforeReminder(ctx: ReminderContext) {
+  const calendarUrl = googleCalendarUrl(ctx);
+  const body = [
+    paragraph(
+      `${escapeHtml(ctx.firstName)}, a week from today we walk the whole sequence together: the eight systems every business runs on, the order to build them in, and where AI belongs once the human decisions are settled.`,
+    ),
+    sessionCard(ctx),
+    pullQuote(escapeHtml(CORE_PROMISE_SHORT)),
+    paragraph(
+      `If the hour is not on your calendar yet, now is the moment. The founders who protect the time are the ones who show up.`,
+    ),
+    buttonRow("Join on Zoom", ctx.joinUrl),
+    zoomDetails(ctx),
+    `<tr><td style="padding:14px 36px 0;"><p style="margin:0;font-family:${SANS};font-size:13px;"><a href="${escapeHtml(calendarUrl)}" style="color:${C.navy};text-decoration:underline;">Add it to your Google Calendar</a></p></td></tr>`,
+  ].join("");
+
+  const text = [
+    `${ctx.firstName}, a week from today we walk the whole sequence together: the eight systems every business runs on, the order to build them in, and where AI belongs once the human decisions are settled.`,
+    ``,
+    `What Entrepreneurs Need to Know`,
+    formatEastern(ctx.start),
+    `${ctx.durationMinutes} minutes, live on Zoom`,
+    ``,
+    CORE_PROMISE_SHORT,
+    ``,
+    `If the hour is not on your calendar yet, now is the moment. The founders who protect the time are the ones who show up.`,
+    ``,
+    `Join on Zoom: ${ctx.joinUrl}`,
+    ...zoomDetailsText(ctx),
+    ``,
+    `Add it to your Google Calendar: ${calendarUrl}`,
+    ...signOffText(ctx),
+  ].join("\n");
+
+  return {
+    subject: "One week from today: What Entrepreneurs Need to Know",
+    html: shell({
+      preheader: "One week from today. Your Zoom link is inside.",
+      heading: "One week from today.",
+      bodyHtml: body,
+      baseUrl: ctx.baseUrl,
+      logoUrl: ctx.logoUrl,
+      unsubscribeUrl: ctx.unsubscribeUrl,
+      footerNote: FOOTER,
+    }),
+    text,
+  };
+}
+
+/** Reminder two: the day before. */
 export function buildDayBeforeReminder(ctx: ReminderContext) {
   const clock = formatEasternClock(ctx.start);
   const calendarUrl = googleCalendarUrl(ctx);
@@ -137,7 +268,7 @@ export function buildDayBeforeReminder(ctx: ReminderContext) {
   };
 }
 
-/** Reminder two: one hour before. */
+/** Reminder three: one hour before. */
 export function buildHourBeforeReminder(ctx: ReminderContext) {
   const clock = formatEasternClock(ctx.start);
   const body = [
