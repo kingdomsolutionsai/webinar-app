@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   EVENT_DEFAULTS,
   EVENT_SETTING_KEYS,
+  PUBLIC_SETTING_KEYS,
   isPlaceholder,
   LION_MARK_URL,
   MAIL_OWNER,
@@ -15,6 +16,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { confirmUrl, verifyConfirm } from "./confirm";
 import { sendAttendanceRewardEmail, sendConfirmEmail, sendEmail, sendSignupEmails } from "./email";
+import { seatBlock, upcomingSession } from "./reminders";
 import {
   claimSequenceStep,
   confirmRegistration,
@@ -44,6 +46,7 @@ import {
   SEQUENCE_SCHEDULE,
 } from "./sequence";
 import { unsubscribeUrl, verifyUnsubscribe } from "./unsubscribe";
+import { brevoStatus, sendBrevoTests, setupBrevo, syncInBackground } from "./brevo";
 /** Only the project owner may read registrations or edit event details. */
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") {
@@ -127,6 +130,17 @@ function trackedUrlsFor(baseUrl: string, email: string) {
     checklist: trackedDownloadUrl(baseUrl, "checklist", email),
   };
 }
+
+/**
+ * The "your seat" block for the email sent after someone confirms: the date,
+ * Zoom link, meeting ID, passcode and calendar link, while the session is
+ * still ahead. Null before a date is set or once it has passed.
+ */
+function seatFor(settings: Record<string, string>) {
+  const session = upcomingSession(settings);
+  return session ? seatBlock(session) : undefined;
+}
+
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
@@ -156,6 +170,8 @@ export const appRouter = router({
         track: input.track ?? null,
         resource: input.resource ?? null,
       });
+      // Copy to Brevo so the reminders reach them. Background: never slows signup.
+      syncInBackground(input.email);
       // Wrapped so that no mail failure can turn a successful signup into an
       // error for someone who has already typed their details — they still see
       // the "check your email" confirmation panel either way.
@@ -180,6 +196,10 @@ export const appRouter = router({
             email: input.email,
             confirmUrl: confirmUrl(baseUrl, input.email),
             logoUrl: baseUrl ? `${baseUrl}${LION_MARK_URL}` : undefined,
+            sessionWhen: (() => {
+              const session = upcomingSession(storedForLinks);
+              return session ? seatBlock(session).when : undefined;
+            })(),
           });
           emailed = result.ok;
           await setRegistrationEmailStatus(
@@ -226,6 +246,8 @@ export const appRouter = router({
         const stored = await getAllEventSettings();
         const baseUrl = resolveEmailBaseUrl(stored[PUBLIC_URL_KEY], resolveBaseUrl(ctx.req));
         if (!alreadyConfirmed) {
+          // Joining the Nurture list in Brevo is what starts the day 2/7/14 letters.
+          syncInBackground(row.email);
           try {
             if (await isUnsubscribed(row.email)) {
               await setRegistrationEmailStatus(row.email, "skipped", "Recipient has unsubscribed");
@@ -240,6 +262,7 @@ export const appRouter = router({
                 logoUrl: baseUrl ? `${baseUrl}${LION_MARK_URL}` : undefined,
                 unsubscribeUrl: unsubscribeUrl(baseUrl, row.email),
                 trackedUrls: trackedUrlsFor(baseUrl, row.email),
+                seat: seatFor(stored),
               });
               await setRegistrationEmailStatus(
                 row.email,
@@ -280,6 +303,7 @@ export const appRouter = router({
           return { ok: false as const, reason: "invalid" as const };
         }
         const row = await unsubscribeByEmail(input.email);
+        syncInBackground(input.email);
         return {
           ok: true as const,
           firstName: row?.firstName ?? null,
@@ -311,6 +335,7 @@ export const appRouter = router({
           logoUrl: `${baseUrl}${LION_MARK_URL}`,
           unsubscribeUrl: unsubscribeUrl(baseUrl, row.email),
           trackedUrls: trackedUrlsFor(baseUrl, row.email),
+          seat: seatFor(stored),
         });
         await setRegistrationEmailStatus(
           row.email,
@@ -332,6 +357,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const { row, alreadyAttended } = await markAttended(input.email);
         if (!row) return { ok: false as const, error: "No such registration" };
+        syncInBackground(row.email);
         if (!alreadyAttended) {
           const stored = await getAllEventSettings();
           const baseUrl = resolveEmailBaseUrl(stored[PUBLIC_URL_KEY], resolveBaseUrl(ctx.req));
@@ -358,6 +384,7 @@ export const appRouter = router({
       .input(z.object({ email: z.string().email() }))
       .mutation(async ({ input }) => {
         const row = await unmarkAttended(input.email);
+        if (row) syncInBackground(row.email);
         return row ? { ok: true as const } : { ok: false as const, error: "No such registration" };
       }),
     exportCsv: adminProcedure.query(async () => {
@@ -505,10 +532,10 @@ export const appRouter = router({
      * same code path, so this is a way to see the sequence work rather than a
      * separate mechanism that might behave differently.
      */
-    runNow: adminProcedure.mutation(async ({ ctx }) => {
-      const settings = await getAllEventSettings();
-      const baseUrl = resolveEmailBaseUrl(settings[PUBLIC_URL_KEY], resolveBaseUrl(ctx.req));
-      return runSequenceDispatch({ baseUrl, settings });
+    runNow: adminProcedure.mutation(async () => {
+      // The sequence is sent by Brevo now. Sending here as well would email
+      // people twice, so this deliberately does nothing.
+      return { considered: 0, sent: 0, failed: 0, skipped: 0, paused: true, handedToBrevo: true };
     }),
     /**
      * Sends one letter to Tabitha herself so she can read it before it reaches
@@ -557,11 +584,33 @@ export const appRouter = router({
           : { ok: false as const, error: result.error };
       }),
   }),
+  /** Brevo now sends the reminders and the follow-up letters. */
+  brevo: router({
+    status: adminProcedure.query(() => brevoStatus()),
+    setup: adminProcedure.mutation(({ ctx }) => setupBrevo({ requestOrigin: resolveBaseUrl(ctx.req) })),
+    sendTests: adminProcedure.mutation(({ ctx }) =>
+      sendBrevoTests({ requestOrigin: resolveBaseUrl(ctx.req) }),
+    ),
+  }),
   settings: router({
     /** Public read so the landing page can show current event details. */
     get: publicProcedure.query(async () => {
       const stored = await getAllEventSettings();
-      return { ...EVENT_DEFAULTS, ...stored };
+      const merged: Record<string, string> = { ...EVENT_DEFAULTS, ...stored };
+      // Only what the public page displays. The Zoom link and passcode stay private.
+      return Object.fromEntries(PUBLIC_SETTING_KEYS.map(key => [key, merged[key] ?? ""])) as Record<
+        (typeof PUBLIC_SETTING_KEYS)[number],
+        string
+      >;
+    }),
+    /** Everything the owner can edit, for the dashboard. */
+    getAll: adminProcedure.query(async () => {
+      const stored = await getAllEventSettings();
+      const merged: Record<string, string> = { ...EVENT_DEFAULTS, ...stored };
+      return Object.fromEntries(EVENT_SETTING_KEYS.map(key => [key, merged[key] ?? ""])) as Record<
+        (typeof EVENT_SETTING_KEYS)[number],
+        string
+      >;
     }),
     update: adminProcedure
       .input(

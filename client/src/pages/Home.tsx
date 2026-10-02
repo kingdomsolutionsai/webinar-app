@@ -153,7 +153,7 @@ function buildChatContext(event: {
         `Time: ${isPlaceholder(event.time) ? "not yet announced" : `${event.time} Eastern Time (ET)`}`,
         `Duration: ${isPlaceholder(event.duration) ? "not yet announced" : event.duration}`,
         `Cost: ${priceLine}`,
-        `Format: live online session. Registrants receive the join link by email after reserving a seat on this page.`,
+        `Format: live on Zoom. Registrants receive the Zoom link by email as soon as they confirm their email address, then again one week before, the day before, and one hour before the session starts. The link is never posted publicly.`,
       ].join("\n")
     : "The next date has not been announced yet. Visitors can join the list on this page to get Part One of the book free and be the first to know the date.";
 

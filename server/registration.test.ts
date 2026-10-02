@@ -48,7 +48,11 @@ vi.mock("./db", () => ({
     return { ...input, id: 99, createdAt: new Date(), updatedAt: new Date() };
   }),
   listRegistrations: vi.fn(async () => sampleRows),
-  getAllEventSettings: vi.fn(async () => ({ date: "Thursday, September 18" })),
+  getAllEventSettings: vi.fn(async () => ({
+    date: "Thursday, September 18",
+    joinUrl: "https://zoom.us/j/123456789?pwd=secret",
+    zoomPasscode: "999999",
+  })),
   setEventSetting: vi.fn(async (key: string, value: string) => {
     settingWrites.push([key, value]);
   }),
@@ -322,6 +326,15 @@ describe("settings.get", () => {
     expect(settings.time).toBe("[TIME]");
     expect(settings.duration).toBe("[DURATION]");
     expect(settings.price).toBe("[PRICE]");
+  });
+
+  it("never exposes the Zoom link or passcode to the public page", async () => {
+    const caller = appRouter.createCaller(makeCtx());
+    const settings = (await caller.settings.get()) as Record<string, string>;
+
+    expect(Object.keys(settings).sort()).toEqual(["date", "duration", "price", "time"]);
+    expect(JSON.stringify(settings)).not.toContain("zoom.us");
+    expect(JSON.stringify(settings)).not.toContain("999999");
   });
 });
 
