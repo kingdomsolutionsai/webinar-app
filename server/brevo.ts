@@ -510,7 +510,8 @@ async function createScheduledCampaign(
     htmlContent: campaign.html,
     recipients: { listIds: [listId] },
     scheduledAt: campaign.at.toISOString(),
-    tag: "webinar",
+    // No campaign tag: Brevo's free plan refuses the whole campaign (405)
+    // when one is sent. The "WENTK" name prefix keeps them easy to find.
   });
   if (!created.ok) throw new Error(created.error);
   const id = created.data.id;
