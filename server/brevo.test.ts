@@ -92,6 +92,10 @@ function fakeBrevo() {
       return json(204);
     }
     if (method === "POST" && path === "/emailCampaigns") {
+      // Matches the real free plan, which rejects any campaign carrying a tag.
+      if (body && (body as Record<string, unknown>).tag !== undefined) {
+        return json(405, { code: "method_not_allowed", message: "You are not allowed to avail tag option for your campaign" });
+      }
       const id = nextId++;
       campaigns.set(id, { ...body, status: "queued" });
       return json(201, { id });
