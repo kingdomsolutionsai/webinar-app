@@ -160,7 +160,8 @@ function EventDetailsEditor() {
         {EVENT_SETTING_KEYS.map(key => {
           const value = draft[key] ?? "";
           const isUrlField = key === "joinUrl" || key === "publicSiteUrl";
-          const pending = isPlaceholder(value) && !isUrlField && key !== "zoomPasscode";
+          const pending =
+            isPlaceholder(value) && !isUrlField && key !== "zoomPasscode" && key !== "clientStory";
           const help =
             key === "publicSiteUrl"
               ? "The address visitors use, e.g. webinar.kingdomsolutionsai.com. Emails use this for the logo and download links, so set it once you publish."
@@ -168,9 +169,11 @@ function EventDetailsEditor() {
                 ? "Where registrants join the live session. Only sent in the reminder emails; it never appears on the public page."
                 : key === "zoomPasscode"
                   ? "Shown in the reminders beside the meeting ID, for anyone whose link does not open."
-                  : null;
+                  : key === "clientStory"
+                    ? "A few sentences about a client's result, in your words. It appears in the Oct 25 Fast Track letter; leave it empty and that letter skips the story. Press \"Set up in Brevo\" after saving."
+                    : null;
           return (
-            <div key={key} className={isUrlField ? "sm:col-span-2" : undefined}>
+            <div key={key} className={isUrlField || key === "clientStory" ? "sm:col-span-2" : undefined}>
               <Label
                 htmlFor={`setting-${key}`}
                 className="flex items-center gap-2 font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/60">

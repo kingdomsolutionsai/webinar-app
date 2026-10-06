@@ -18,6 +18,14 @@ import {
   type SequenceContext,
 } from "./sequence";
 import { unsubscribeUrl } from "./unsubscribe";
+import {
+  buildFastTrackAgreeing,
+  buildFastTrackInside,
+  buildFastTrackLast,
+  buildFastTrackMorningAfter,
+  buildFastTrackStory,
+  fastTrackOpenFor,
+} from "./fastTrack";
 
 /**
  * Brevo owns the follow-up email now.
@@ -361,7 +369,16 @@ function pick(letter: { subject: string; html: string }) {
 }
 
 export type PlannedCampaign = {
-  key: "reminder-week" | "reminder-day" | "reminder-hour" | "letter-4" | "letter-5" | "letter-6";
+  key:
+    | "reminder-week"
+    | "reminder-day"
+    | "reminder-hour"
+    | "letter-4"
+    | "letter-5"
+    | "letter-6"
+    | "fast-track-3"
+    | "fast-track-4"
+    | "fast-track-5";
   label: string;
   list: "all" | "nurture";
   at: Date;
@@ -407,14 +424,44 @@ export function planEventCampaigns(input: {
   const weekBefore = buildWeekBeforeReminder(reminderCtx);
   const dayBefore = buildDayBeforeReminder(reminderCtx);
   const hourBefore = buildHourBeforeReminder(reminderCtx);
+  const reminders: PlannedCampaign[] = [
+    { key: "reminder-week", label: "Reminder: one week before", list: "all", at: sameEasternClock(start, -7), ...pick(weekBefore) },
+    { key: "reminder-day", label: "Reminder: the day before", list: "all", at: new Date(start.getTime() - day), ...pick(dayBefore) },
+    { key: "reminder-hour", label: "Reminder: one hour before", list: "all", at: new Date(start.getTime() - hour), ...pick(hourBefore) },
+  ];
+
+  /*
+   * While the Fast Track is open, everything after the session is the Fast
+   * Track arc: every other day from the morning after until the day before
+   * enrollment closes, to everyone who registered (not only the nurture list).
+   */
+  if (fastTrackOpenFor(start)) {
+    const ft = { ...letterCtx, clientStory: (settings.clientStory ?? "").trim() };
+    const lastAttended = buildFastTrackLast({ ...ft, attended: true });
+    const lastMissed = buildFastTrackLast({ ...ft, attended: false });
+    return [
+      ...reminders,
+      { key: "letter-4", label: "Fast Track 1: the morning after", list: "all", at: easternDayAfter(start, 1, 9), ...pick(buildFastTrackMorningAfter(ft)) },
+      { key: "letter-5", label: "Fast Track 2: agreeing is not starting", list: "all", at: sameEasternClock(start, 3), ...pick(buildFastTrackAgreeing(ft)) },
+      { key: "fast-track-3", label: "Fast Track 3: what thirty days can change", list: "all", at: sameEasternClock(start, 5), ...pick(buildFastTrackStory(ft)) },
+      { key: "fast-track-4", label: "Fast Track 4: exactly what is inside", list: "all", at: sameEasternClock(start, 7), ...pick(buildFastTrackInside(ft)) },
+      {
+        key: "letter-6",
+        label: "Fast Track 5: enrollment closes tomorrow",
+        list: "all",
+        at: sameEasternClock(start, 9),
+        subject: lastMissed.subject,
+        html: conditionalMerge('contact.ATTENDED == "yes"', lastAttended.html, lastMissed.html),
+      },
+    ];
+  }
+
   const replay = buildReplayLetter(letterCtx);
   const five = buildPostSessionLetter(letterCtx);
   const sixAttended = buildFinalLetter({ ...letterCtx, attended: true });
   const sixMissed = buildFinalLetter({ ...letterCtx, attended: false });
   return [
-    { key: "reminder-week", label: "Reminder: one week before", list: "all", at: sameEasternClock(start, -7), ...pick(weekBefore) },
-    { key: "reminder-day", label: "Reminder: the day before", list: "all", at: new Date(start.getTime() - day), ...pick(dayBefore) },
-    { key: "reminder-hour", label: "Reminder: one hour before", list: "all", at: new Date(start.getTime() - hour), ...pick(hourBefore) },
+    ...reminders,
     { key: "letter-4", label: "Letter 4: the morning after", list: "all", at: easternDayAfter(start, 1, 9), ...pick(replay) },
     { key: "letter-5", label: "Letter 5: three days after", list: "nurture", at: new Date(start.getTime() + 3 * day), ...pick(five) },
     {
@@ -762,9 +809,22 @@ export async function sendBrevoTests(options: { requestOrigin?: string; io?: Bre
       "reminder-week": { label: "Reminder: one week before", build: () => buildWeekBeforeReminder(reminderCtx) },
       "reminder-day": { label: "Reminder: the day before", build: () => buildDayBeforeReminder(reminderCtx) },
       "reminder-hour": { label: "Reminder: one hour before", build: () => buildHourBeforeReminder(reminderCtx) },
-      "letter-4": { label: "Letter 4: the morning after", build: () => buildReplayLetter(directCtx) },
-      "letter-5": { label: "Letter 5: three days after", build: () => buildPostSessionLetter(directCtx) },
-      "letter-6": { label: "Letter 6: the last letter", build: () => buildFinalLetter(directCtx) },
+      ...(fastTrackOpenFor(start)
+        ? (() => {
+            const ft = { ...directCtx, clientStory: (settings.clientStory ?? "").trim() };
+            return {
+              "letter-4": { label: "Fast Track 1: the morning after", build: () => buildFastTrackMorningAfter(ft) },
+              "letter-5": { label: "Fast Track 2: agreeing is not starting", build: () => buildFastTrackAgreeing(ft) },
+              "fast-track-3": { label: "Fast Track 3: what thirty days can change", build: () => buildFastTrackStory(ft) },
+              "fast-track-4": { label: "Fast Track 4: exactly what is inside", build: () => buildFastTrackInside(ft) },
+              "letter-6": { label: "Fast Track 5: enrollment closes tomorrow", build: () => buildFastTrackLast(ft) },
+            };
+          })()
+        : {
+            "letter-4": { label: "Letter 4: the morning after", build: () => buildReplayLetter(directCtx) },
+            "letter-5": { label: "Letter 5: three days after", build: () => buildPostSessionLetter(directCtx) },
+            "letter-6": { label: "Letter 6: the last letter", build: () => buildFinalLetter(directCtx) },
+          }),
     };
     for (const [key, info] of Object.entries(eventEmails)) {
       if (key.startsWith("reminder") && !reminderCtx.joinUrl) {

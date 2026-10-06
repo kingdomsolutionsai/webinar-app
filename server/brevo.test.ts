@@ -13,6 +13,7 @@ import {
 } from "./brevo";
 import { buildDayBeforeReminder, buildHourBeforeReminder, zoomMeetingId } from "./reminders";
 import { parseEventStart } from "./eventTime";
+import { FAST_TRACK } from "../shared/event";
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-secret";
 
@@ -280,8 +281,46 @@ describe("the session-anchored schedule", () => {
     expect(at("reminder-day")).toBe("2026-10-19T15:00:00.000Z"); // Mon 11:00 AM ET
     expect(at("reminder-hour")).toBe("2026-10-20T14:00:00.000Z"); // Tue 10:00 AM ET
     expect(at("letter-4")).toBe("2026-10-21T13:00:00.000Z"); // Wed 9:00 AM ET
-    expect(at("letter-5")).toBe("2026-10-23T15:00:00.000Z");
-    expect(at("letter-6")).toBe("2026-10-27T15:00:00.000Z");
+    // While the Fast Track is open: every other day until it closes on Oct 30.
+    expect(at("letter-5")).toBe("2026-10-23T15:00:00.000Z"); // Fri 11:00 AM ET
+    expect(at("fast-track-3")).toBe("2026-10-25T15:00:00.000Z"); // Sun 11:00 AM ET
+    expect(at("fast-track-4")).toBe("2026-10-27T15:00:00.000Z"); // Tue 11:00 AM ET
+    expect(at("letter-6")).toBe("2026-10-29T15:00:00.000Z"); // Thu 11:00 AM ET
+    for (const p of plan) expect(p.at.getTime()).toBeLessThan(new Date(FAST_TRACK.closesAt).getTime());
+  });
+
+  it("sends every Fast Track letter to everyone registered, with the call link", () => {
+    for (const key of ["letter-4", "letter-5", "fast-track-3", "fast-track-4", "letter-6"]) {
+      const p = plan.find(c => c.key === key)!;
+      expect(p.list).toBe("all");
+      expect(p.html).toContain(FAST_TRACK.callUrl);
+      expect(p.html).not.toContain("\u2014"); // no em dashes
+      expect(p.html.toLowerCase()).not.toContain("founding");
+    }
+  });
+
+  it("names the price only from the third Fast Track letter on", () => {
+    expect(plan.find(c => c.key === "letter-4")!.html).not.toContain(FAST_TRACK.price);
+    expect(plan.find(c => c.key === "letter-5")!.html).not.toContain(FAST_TRACK.price);
+    expect(plan.find(c => c.key === "fast-track-3")!.html).toContain(FAST_TRACK.price);
+    expect(plan.find(c => c.key === "fast-track-4")!.html).toContain(FAST_TRACK.price);
+  });
+
+  it("uses the client story in letter three when one is saved, and skips it otherwise", () => {
+    const withStory = planEventCampaigns({
+      baseUrl: SETTINGS.publicSiteUrl,
+      settings: { ...SETTINGS, clientStory: "Maria found her offer in week one." },
+      start,
+    }).find(c => c.key === "fast-track-3")!.html;
+    expect(withStory).toContain("Maria found her offer in week one.");
+    expect(plan.find(c => c.key === "fast-track-3")!.html).not.toContain("From a client");
+  });
+
+  it("returns to the original letters once the Fast Track has closed", () => {
+    const nov = parseEventStart("Tuesday, November 17, 2026", "11:00 AM")!;
+    const later = planEventCampaigns({ baseUrl: SETTINGS.publicSiteUrl, settings: SETTINGS, start: nov });
+    expect(later.map(p => p.key)).toEqual(["reminder-week", "reminder-day", "reminder-hour", "letter-4", "letter-5", "letter-6"]);
+    expect(later.find(p => p.key === "letter-6")!.subject).toBe("The last letter");
   });
 
   it("keeps the one-week reminder at 11 AM Eastern across a clock change", () => {
@@ -313,7 +352,7 @@ describe("the session-anchored schedule", () => {
     }
   });
 
-  it("gives letter six both endings, chosen by attendance", () => {
+  it("gives the last letter both endings, chosen by attendance", () => {
     const six = plan.find(p => p.key === "letter-6")!.html;
     expect(renderCondition(six, true)).toContain("The chapter and the checklist remain yours");
     expect(renderCondition(six, false)).toContain("the checklist will be waiting for you there too");
@@ -335,15 +374,15 @@ describe("setting everything up in Brevo", () => {
     expect((brevo.contacts.get("confirmed@example.com")?.attributes as Record<string, string>).CHAPTER_OPENED).toBe("yes");
     expect(brevo.contacts.get("gone@example.com")?.emailBlacklisted).toBe(true);
     expect(brevo.templates.size).toBe(3);
-    expect(brevo.campaigns.size).toBe(6);
+    expect(brevo.campaigns.size).toBe(8);
     expect(report.campaigns.every(c => c.status === "queued")).toBe(true);
 
     const reminder = [...brevo.campaigns.values()].find(c => String(c.name).includes("day before"))!;
     expect(reminder.scheduledAt).toBe("2026-10-19T15:00:00.000Z");
     expect(String(reminder.htmlContent)).toContain(JOIN);
     expect((reminder.recipients as { listIds: number[] }).listIds).toEqual([Number(store[BREVO_KEYS.listAll])]);
-    const six = [...brevo.campaigns.values()].find(c => String(c.name).includes("last letter"))!;
-    expect((six.recipients as { listIds: number[] }).listIds).toEqual([Number(store[BREVO_KEYS.listNurture])]);
+    const last = [...brevo.campaigns.values()].find(c => String(c.name).includes("closes tomorrow"))!;
+    expect((last.recipients as { listIds: number[] }).listIds).toEqual([Number(store[BREVO_KEYS.listAll])]);
   });
 
   it("can be pressed again without duplicating anything", async () => {
@@ -361,7 +400,7 @@ describe("setting everything up in Brevo", () => {
     expect(brevo.lists).toHaveLength(2);
     expect(brevo.folders).toHaveLength(1);
     expect([...brevo.templates.keys()]).toEqual(firstTemplates);
-    expect(brevo.campaigns.size).toBe(6); // old unsent ones replaced, not added to
+    expect(brevo.campaigns.size).toBe(8); // old unsent ones replaced, not added to
   });
 
   it("does not schedule reminders without a Zoom link, and says so", async () => {
@@ -370,7 +409,7 @@ describe("setting everything up in Brevo", () => {
     const report = await setupBrevo({ io });
 
     expect(report.ok).toBe(true);
-    expect(brevo.campaigns.size).toBe(3);
+    expect(brevo.campaigns.size).toBe(5);
     expect(report.campaigns.filter(c => c.status === "not scheduled")).toHaveLength(3);
     expect(report.warnings.join(" ")).toMatch(/Zoom join link/);
   });
@@ -383,7 +422,7 @@ describe("setting everything up in Brevo", () => {
     expect(report.campaigns.find(c => c.key === "reminder-week")?.status).toBe("skipped");
     expect(report.campaigns.find(c => c.key === "reminder-day")?.status).toBe("skipped");
     expect(report.campaigns.find(c => c.key === "reminder-hour")?.status).toBe("skipped");
-    expect(brevo.campaigns.size).toBe(3);
+    expect(brevo.campaigns.size).toBe(5);
   });
 
   it("reports a bad key clearly instead of failing silently", async () => {
@@ -404,8 +443,8 @@ describe("test copies", () => {
     const report = await sendBrevoTests({ io });
 
     expect(report.results.filter(r => !(r.ok && r.via === "brevo"))).toEqual([]);
-    expect(report.results).toHaveLength(9);
+    expect(report.results).toHaveLength(11);
     expect(report.results.every(r => r.ok && r.via === "brevo")).toBe(true);
-    expect(brevo.tests).toHaveLength(9);
+    expect(brevo.tests).toHaveLength(11);
   });
 });

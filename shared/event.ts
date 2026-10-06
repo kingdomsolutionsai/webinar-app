@@ -12,6 +12,7 @@ export const EVENT_SETTING_KEYS = [
   "zoomPasscode",
   "publicSiteUrl",
   "replayUrl",
+  "clientStory",
 ] as const;
 
 /**
@@ -32,6 +33,7 @@ export const EVENT_DEFAULTS: Record<EventSettingKey, string> = {
   zoomPasscode: "",
   publicSiteUrl: "",
   replayUrl: "",
+  clientStory: "",
 };
 export const EVENT_LABELS: Record<EventSettingKey, string> = {
   date: "Date",
@@ -42,7 +44,27 @@ export const EVENT_LABELS: Record<EventSettingKey, string> = {
   zoomPasscode: "Zoom passcode",
   publicSiteUrl: "Public web address",
   replayUrl: "Replay link",
+  clientStory: "Client story (Fast Track letter, Oct 25)",
 };
+
+/**
+ * The 30-Day Business Fast Track: the offer the post-session letters invite
+ * everyone to. While enrollment is open, letters four onward become the Fast
+ * Track arc (every other day from the morning after until the close). Once
+ * `closesAt` has passed, sessions fall back to the original audit letters, so
+ * a later session never advertises a cohort that has already started.
+ */
+export const FAST_TRACK = {
+  name: "30-Day Business Fast Track",
+  callLabel: "Business Fast Track Strategy Call",
+  callUrl: "https://calendly.com/tabitha-kingdomsolutionsai/business-fast-track-strategy-call",
+  price: "$1,997",
+  seats: 8,
+  startsLabel: "Monday, November 2",
+  closesLabel: "Friday, October 30",
+  /** End of Friday, October 30, Eastern (EDT). */
+  closesAt: "2026-10-31T03:59:00.000Z",
+} as const;
 
 /** A value is still a placeholder if it is empty or wrapped in square brackets. */
 export function isPlaceholder(value: string | null | undefined): boolean {
