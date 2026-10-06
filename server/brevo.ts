@@ -21,8 +21,9 @@ import { unsubscribeUrl } from "./unsubscribe";
 import {
   buildFastTrackAgreeing,
   buildFastTrackInside,
-  buildFastTrackLast,
+  buildFastTrackFinal,
   buildFastTrackMorningAfter,
+  buildFastTrackTomorrow,
   buildFastTrackStory,
   fastTrackOpenFor,
 } from "./fastTrack";
@@ -437,21 +438,22 @@ export function planEventCampaigns(input: {
    */
   if (fastTrackOpenFor(start)) {
     const ft = { ...letterCtx, clientStory: (settings.clientStory ?? "").trim() };
-    const lastAttended = buildFastTrackLast({ ...ft, attended: true });
-    const lastMissed = buildFastTrackLast({ ...ft, attended: false });
+    const finalAttended = buildFastTrackFinal({ ...ft, attended: true });
+    const finalMissed = buildFastTrackFinal({ ...ft, attended: false });
     return [
       ...reminders,
       { key: "letter-4", label: "Fast Track 1: the morning after", list: "all", at: easternDayAfter(start, 1, 9), ...pick(buildFastTrackMorningAfter(ft)) },
       { key: "letter-5", label: "Fast Track 2: agreeing is not starting", list: "all", at: sameEasternClock(start, 3), ...pick(buildFastTrackAgreeing(ft)) },
       { key: "fast-track-3", label: "Fast Track 3: what thirty days can change", list: "all", at: sameEasternClock(start, 5), ...pick(buildFastTrackStory(ft)) },
       { key: "fast-track-4", label: "Fast Track 4: exactly what is inside", list: "all", at: sameEasternClock(start, 7), ...pick(buildFastTrackInside(ft)) },
+      { key: "fast-track-5", label: "Fast Track 5: enrollment closes tomorrow", list: "all", at: sameEasternClock(start, 9), ...pick(buildFastTrackTomorrow(ft)) },
       {
         key: "letter-6",
-        label: "Fast Track 5: enrollment closes tomorrow",
+        label: "Fast Track 6: enrollment closes tonight",
         list: "all",
-        at: sameEasternClock(start, 9),
-        subject: lastMissed.subject,
-        html: conditionalMerge('contact.ATTENDED == "yes"', lastAttended.html, lastMissed.html),
+        at: easternDayAfter(start, 10, 9),
+        subject: finalMissed.subject,
+        html: conditionalMerge('contact.ATTENDED == "yes"', finalAttended.html, finalMissed.html),
       },
     ];
   }
@@ -817,7 +819,8 @@ export async function sendBrevoTests(options: { requestOrigin?: string; io?: Bre
               "letter-5": { label: "Fast Track 2: agreeing is not starting", build: () => buildFastTrackAgreeing(ft) },
               "fast-track-3": { label: "Fast Track 3: what thirty days can change", build: () => buildFastTrackStory(ft) },
               "fast-track-4": { label: "Fast Track 4: exactly what is inside", build: () => buildFastTrackInside(ft) },
-              "letter-6": { label: "Fast Track 5: enrollment closes tomorrow", build: () => buildFastTrackLast(ft) },
+              "fast-track-5": { label: "Fast Track 5: enrollment closes tomorrow", build: () => buildFastTrackTomorrow(ft) },
+              "letter-6": { label: "Fast Track 6: enrollment closes tonight", build: () => buildFastTrackFinal(ft) },
             };
           })()
         : {

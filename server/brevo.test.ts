@@ -285,15 +285,17 @@ describe("the session-anchored schedule", () => {
     expect(at("letter-5")).toBe("2026-10-23T15:00:00.000Z"); // Fri 11:00 AM ET
     expect(at("fast-track-3")).toBe("2026-10-25T15:00:00.000Z"); // Sun 11:00 AM ET
     expect(at("fast-track-4")).toBe("2026-10-27T15:00:00.000Z"); // Tue 11:00 AM ET
-    expect(at("letter-6")).toBe("2026-10-29T15:00:00.000Z"); // Thu 11:00 AM ET
+    expect(at("fast-track-5")).toBe("2026-10-29T15:00:00.000Z"); // Thu 11:00 AM ET
+    expect(at("letter-6")).toBe("2026-10-30T13:00:00.000Z"); // Fri 9:00 AM ET, the day it closes
     for (const p of plan) expect(p.at.getTime()).toBeLessThan(new Date(FAST_TRACK.closesAt).getTime());
   });
 
   it("sends every Fast Track letter to everyone registered, with the call link", () => {
-    for (const key of ["letter-4", "letter-5", "fast-track-3", "fast-track-4", "letter-6"]) {
+    for (const key of ["letter-4", "letter-5", "fast-track-3", "fast-track-4", "fast-track-5", "letter-6"]) {
       const p = plan.find(c => c.key === key)!;
       expect(p.list).toBe("all");
-      expect(p.html).toContain(FAST_TRACK.callUrl);
+      // No call times on the closing day, so that letter asks for a reply instead.
+      expect(p.html).toContain(key === "letter-6" ? `mailto:${FAST_TRACK.replyTo}` : FAST_TRACK.callUrl);
       expect(p.html).not.toContain("\u2014"); // no em dashes
       expect(p.html.toLowerCase()).not.toContain("founding");
     }
@@ -374,14 +376,14 @@ describe("setting everything up in Brevo", () => {
     expect((brevo.contacts.get("confirmed@example.com")?.attributes as Record<string, string>).CHAPTER_OPENED).toBe("yes");
     expect(brevo.contacts.get("gone@example.com")?.emailBlacklisted).toBe(true);
     expect(brevo.templates.size).toBe(3);
-    expect(brevo.campaigns.size).toBe(8);
+    expect(brevo.campaigns.size).toBe(9);
     expect(report.campaigns.every(c => c.status === "queued")).toBe(true);
 
     const reminder = [...brevo.campaigns.values()].find(c => String(c.name).includes("day before"))!;
     expect(reminder.scheduledAt).toBe("2026-10-19T15:00:00.000Z");
     expect(String(reminder.htmlContent)).toContain(JOIN);
     expect((reminder.recipients as { listIds: number[] }).listIds).toEqual([Number(store[BREVO_KEYS.listAll])]);
-    const last = [...brevo.campaigns.values()].find(c => String(c.name).includes("closes tomorrow"))!;
+    const last = [...brevo.campaigns.values()].find(c => String(c.name).includes("closes tonight"))!;
     expect((last.recipients as { listIds: number[] }).listIds).toEqual([Number(store[BREVO_KEYS.listAll])]);
   });
 
@@ -400,7 +402,7 @@ describe("setting everything up in Brevo", () => {
     expect(brevo.lists).toHaveLength(2);
     expect(brevo.folders).toHaveLength(1);
     expect([...brevo.templates.keys()]).toEqual(firstTemplates);
-    expect(brevo.campaigns.size).toBe(8); // old unsent ones replaced, not added to
+    expect(brevo.campaigns.size).toBe(9); // old unsent ones replaced, not added to
   });
 
   it("does not schedule reminders without a Zoom link, and says so", async () => {
@@ -409,7 +411,7 @@ describe("setting everything up in Brevo", () => {
     const report = await setupBrevo({ io });
 
     expect(report.ok).toBe(true);
-    expect(brevo.campaigns.size).toBe(5);
+    expect(brevo.campaigns.size).toBe(6);
     expect(report.campaigns.filter(c => c.status === "not scheduled")).toHaveLength(3);
     expect(report.warnings.join(" ")).toMatch(/Zoom join link/);
   });
@@ -422,7 +424,7 @@ describe("setting everything up in Brevo", () => {
     expect(report.campaigns.find(c => c.key === "reminder-week")?.status).toBe("skipped");
     expect(report.campaigns.find(c => c.key === "reminder-day")?.status).toBe("skipped");
     expect(report.campaigns.find(c => c.key === "reminder-hour")?.status).toBe("skipped");
-    expect(brevo.campaigns.size).toBe(5);
+    expect(brevo.campaigns.size).toBe(6);
   });
 
   it("reports a bad key clearly instead of failing silently", async () => {
@@ -443,8 +445,8 @@ describe("test copies", () => {
     const report = await sendBrevoTests({ io });
 
     expect(report.results.filter(r => !(r.ok && r.via === "brevo"))).toEqual([]);
-    expect(report.results).toHaveLength(11);
+    expect(report.results).toHaveLength(12);
     expect(report.results.every(r => r.ok && r.via === "brevo")).toBe(true);
-    expect(brevo.tests).toHaveLength(11);
+    expect(brevo.tests).toHaveLength(12);
   });
 });

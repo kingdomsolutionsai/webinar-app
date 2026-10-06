@@ -17,8 +17,8 @@ import { trackedDownloadUrl } from "./downloads";
 /**
  * The Fast Track arc: the post-session letters while enrollment is open.
  *
- * Five letters, every other day from the morning after the session until the
- * day before enrollment closes, sent to everyone who registered. The price is
+ * Six letters: every other day from the morning after the session until the
+ * day before enrollment closes, plus one short note the morning it closes, sent to everyone who registered. The price is
  * named from the third letter on, never in the first two. Every letter has
  * one ask (the Strategy Call), and the arc still ends with a plain "this is
  * the last of these letters", so nobody is left wondering when it stops.
@@ -219,31 +219,53 @@ export function buildFastTrackInside(ctx: FastTrackContext) {
   });
 }
 
-/** Letter five, nine days after: enrollment closes tomorrow, and this is the last letter. */
-export function buildFastTrackLast(ctx: FastTrackContext) {
-  const chapterUrl = ctx.chapterUrlOverride ?? trackedDownloadUrl(ctx.baseUrl, "chapter", ctx.email);
-  const remainsYours = ctx.attended
-    ? `Whatever you decide, nothing else expires. The chapter and the checklist remain yours, and if you come back a year from now with a different question, I will still answer it.`
-    : `Whatever you decide, nothing else expires. Part One remains yours, and if a future session comes around, the checklist will be waiting for you there too.`;
+/** Letter five, nine days after: enrollment closes tomorrow. */
+export function buildFastTrackTomorrow(ctx: FastTrackContext) {
   const body = [
     paragraph(
       `${name(ctx)}, enrollment for the ${FAST_TRACK.name} closes tomorrow, ${FAST_TRACK.closesLabel}. We begin ${FAST_TRACK.startsLabel}, and there are ${FAST_TRACK.seats} places in total.`,
     ),
     paragraph(
-      `If you have been weighing it, a Strategy Call is the easiest way to decide. Thirty minutes, and you leave knowing your next step either way. Times are open through tomorrow.`,
+      `If you have been weighing it, a Strategy Call is the easiest way to decide. Thirty minutes, and you leave knowing your next step either way. Today is the last day I have times open before enrollment closes.`,
     ),
     buttonRow(CTA, FAST_TRACK.callUrl),
+    paragraph(`If today is already full for you, simply reply to this email and tell me you are interested. I read every reply myself.`),
+    pullQuote(`Clarity is not knowing everything. It is knowing what is next.`),
+  ];
+  return wrap(ctx, {
+    subject: "Enrollment closes tomorrow",
+    preheader: "The Fast Track closes tomorrow. Today is the last day for a Strategy Call.",
+    heading: "Enrollment closes tomorrow.",
+    body,
+  });
+}
+
+/** Letter six, the morning of the close: closes tonight, and the last letter. */
+export function buildFastTrackFinal(ctx: FastTrackContext) {
+  const chapterUrl = ctx.chapterUrlOverride ?? trackedDownloadUrl(ctx.baseUrl, "chapter", ctx.email);
+  const replyUrl = `mailto:${FAST_TRACK.replyTo}?subject=${encodeURIComponent("Fast Track: I'm interested")}`;
+  const remainsYours = ctx.attended
+    ? `Whatever you decide, nothing else expires. The chapter and the checklist remain yours, and if you come back a year from now with a different question, I will still answer it.`
+    : `Whatever you decide, nothing else expires. Part One remains yours, and if a future session comes around, the checklist will be waiting for you there too.`;
+  const body = [
     paragraph(
-      `This is also the last of these letters. I would rather tell you that than keep arriving in your inbox indefinitely. You are carrying enough.`,
+      `${name(ctx)}, enrollment for the ${FAST_TRACK.name} closes tonight. We begin ${FAST_TRACK.startsLabel}.`,
+    ),
+    paragraph(
+      `If you already know you want one of the places, reply to this email today and tell me. I will get back to you personally with the next step.`,
+    ),
+    buttonRow("Reply to Tabitha", replyUrl),
+    paragraph(
+      `This is the last of these letters. I would rather tell you that than keep arriving in your inbox indefinitely. You are carrying enough.`,
     ),
     paragraph(remainsYours),
     pullQuote(escapeHtml(CORE_PROMISE_SHORT)),
     postscriptRow(`P.S. If you would rather sit with the book a while longer, that is a legitimate choice and not a lesser one.`, "Read Part One again", chapterUrl),
   ];
   return wrap(ctx, {
-    subject: "Enrollment closes tomorrow",
-    preheader: "The Fast Track closes tomorrow, and this is the last of these letters.",
-    heading: "Enrollment closes tomorrow.",
+    subject: "Enrollment closes tonight",
+    preheader: "The Fast Track closes tonight, and this is the last of these letters.",
+    heading: "Enrollment closes tonight.",
     body,
   });
 }
