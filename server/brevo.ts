@@ -536,13 +536,27 @@ async function upsertTemplate(
   return created.data.id;
 }
 
-/** Deletes a stored campaign only if it has not been sent. Sent ones keep their stats. */
-async function retireUnsentCampaign(io: BrevoIO, id: number) {
+/**
+ * Takes a stored campaign out of the schedule if it has not been sent. Sent
+ * ones keep their stats.
+ *
+ * Brevo does not always allow a scheduled campaign to be deleted (it left the
+ * old copies queued on Tabitha's account, so every setup run doubled the
+ * emails). When the delete is refused, suspend it instead, then confirm it is
+ * no longer queued. Returns a note when neither worked, so setup can warn.
+ */
+async function retireUnsentCampaign(io: BrevoIO, id: number): Promise<string | null> {
   const current = await api<{ status?: string }>(io, "GET", `/emailCampaigns/${id}`);
-  if (!current.ok) return; // already gone
-  if (["draft", "queued", "suspended"].includes(current.data.status ?? "")) {
-    await api(io, "DELETE", `/emailCampaigns/${id}`);
-  }
+  if (!current.ok) return null; // already gone
+  const status = current.data.status ?? "";
+  if (status === "suspended" || !["draft", "queued"].includes(status)) return null;
+  const deleted = await api(io, "DELETE", `/emailCampaigns/${id}`);
+  if (deleted.ok) return null;
+  console.error(`[Brevo] Could not delete campaign ${id}: ${deleted.error}. Suspending instead.`);
+  await api(io, "PUT", `/emailCampaigns/${id}/status`, { status: "suspended" });
+  const after = await api<{ status?: string }>(io, "GET", `/emailCampaigns/${id}`);
+  if (!after.ok || after.data.status !== "queued") return null;
+  return `Campaign #${id} from an earlier run is still scheduled. Suspend it in Brevo so it does not send twice.`;
 }
 
 async function createScheduledCampaign(
@@ -667,7 +681,10 @@ export async function setupBrevo(options: { requestOrigin?: string; io?: BrevoIO
       }
 
       // Replace anything from an earlier run that has not gone out yet.
-      for (const item of stored?.items ?? []) await retireUnsentCampaign(io, item.id);
+      for (const item of stored?.items ?? []) {
+        const problem = await retireUnsentCampaign(io, item.id);
+        if (problem) report.warnings.push(problem);
+      }
 
       const items: StoredCampaigns["items"] = [];
       const dateTag = start.toISOString().slice(0, 10);

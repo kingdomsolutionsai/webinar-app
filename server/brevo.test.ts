@@ -32,7 +32,7 @@ const SETTINGS = {
 /* ------------------------------------------------------------------ *
  * A small in-memory stand-in for the Brevo API
  * ------------------------------------------------------------------ */
-function fakeBrevo() {
+function fakeBrevo(options: { refuseDelete?: boolean } = {}) {
   let nextId = 100;
   const folders: { id: number; name: string }[] = [];
   const lists: { id: number; name: string; folderId: number }[] = [];
@@ -111,7 +111,12 @@ function fakeBrevo() {
         return json(204);
       }
       if (method === "GET") return json(200, c);
+      if (method === "PUT" && campaignMatch[2] === "/status") {
+        c.status = String((body as { status?: string }).status ?? c.status);
+        return json(204);
+      }
       if (method === "DELETE") {
+        if (options.refuseDelete) return json(405, { message: "Deleting a scheduled campaign is not allowed" });
         campaigns.delete(id);
         return json(204);
       }
@@ -409,6 +414,19 @@ describe("setting everything up in Brevo", () => {
     expect(brevo.folders).toHaveLength(1);
     expect([...brevo.templates.keys()]).toEqual(firstTemplates);
     expect(brevo.campaigns.size).toBe(9); // old unsent ones replaced, not added to
+  });
+
+  it("suspends the earlier emails when Brevo will not delete them, so nothing sends twice", async () => {
+    const brevo = fakeBrevo({ refuseDelete: true });
+    const { io } = makeIO(brevo);
+    await setupBrevo({ io });
+    const again = await setupBrevo({ io });
+
+    expect(again.ok).toBe(true);
+    const statuses = [...brevo.campaigns.values()].map(c => c.status);
+    expect(statuses.filter(st => st === "queued")).toHaveLength(9);
+    expect(statuses.filter(st => st === "suspended")).toHaveLength(9);
+    expect(again.warnings.join(" ")).not.toMatch(/still scheduled/);
   });
 
   it("does not schedule reminders without a Zoom link, and says so", async () => {
