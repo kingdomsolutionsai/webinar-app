@@ -226,15 +226,15 @@ export function buildFastTrackTomorrow(ctx: FastTrackContext) {
       `${name(ctx)}, enrollment for the ${FAST_TRACK.name} closes tomorrow, ${FAST_TRACK.closesLabel}. We begin ${FAST_TRACK.startsLabel}, and there are ${FAST_TRACK.seats} places in total.`,
     ),
     paragraph(
-      `If you have been weighing it, a Strategy Call is the easiest way to decide. Thirty minutes, and you leave knowing your next step either way. Today is the last day I have times open before enrollment closes.`,
+      `If you have been weighing it, a Strategy Call is the easiest way to decide. Thirty minutes, and you leave knowing your next step either way. I have times open today, and tomorrow from ${FAST_TRACK.closingDayHours}.`,
     ),
     buttonRow(CTA, FAST_TRACK.callUrl),
-    paragraph(`If today is already full for you, simply reply to this email and tell me you are interested. I read every reply myself.`),
+    paragraph(`If none of those times work for you, simply reply to this email and tell me you are interested. I read every reply myself.`),
     pullQuote(`Clarity is not knowing everything. It is knowing what is next.`),
   ];
   return wrap(ctx, {
     subject: "Enrollment closes tomorrow",
-    preheader: "The Fast Track closes tomorrow. Today is the last day for a Strategy Call.",
+    preheader: "The Fast Track closes tomorrow. Strategy Call times are open today and tomorrow.",
     heading: "Enrollment closes tomorrow.",
     body,
   });
@@ -252,7 +252,11 @@ export function buildFastTrackFinal(ctx: FastTrackContext) {
       `${name(ctx)}, enrollment for the ${FAST_TRACK.name} closes tonight. We begin ${FAST_TRACK.startsLabel}.`,
     ),
     paragraph(
-      `If you already know you want one of the places, reply to this email today and tell me. I will get back to you personally with the next step.`,
+      `I have kept Strategy Call times open today from ${FAST_TRACK.closingDayHours}, for anyone who wants to talk it through before deciding.`,
+    ),
+    buttonRow(CTA, FAST_TRACK.callUrl),
+    paragraph(
+      `If you already know you want one of the places, or none of those times work, reply to this email today and tell me. I will get back to you personally with the next step.`,
     ),
     buttonRow("Reply to Tabitha", replyUrl),
     paragraph(
@@ -264,7 +268,7 @@ export function buildFastTrackFinal(ctx: FastTrackContext) {
   ];
   return wrap(ctx, {
     subject: "Enrollment closes tonight",
-    preheader: "The Fast Track closes tonight, and this is the last of these letters.",
+    preheader: "Strategy Call times are open until 2 PM ET, and this is the last of these letters.",
     heading: "Enrollment closes tonight.",
     body,
   });

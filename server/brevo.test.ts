@@ -294,11 +294,17 @@ describe("the session-anchored schedule", () => {
     for (const key of ["letter-4", "letter-5", "fast-track-3", "fast-track-4", "fast-track-5", "letter-6"]) {
       const p = plan.find(c => c.key === key)!;
       expect(p.list).toBe("all");
-      // No call times on the closing day, so that letter asks for a reply instead.
-      expect(p.html).toContain(key === "letter-6" ? `mailto:${FAST_TRACK.replyTo}` : FAST_TRACK.callUrl);
+      expect(p.html).toContain(FAST_TRACK.callUrl);
       expect(p.html).not.toContain("\u2014"); // no em dashes
       expect(p.html.toLowerCase()).not.toContain("founding");
     }
+  });
+
+  it("offers both a call and a reply on the closing day", () => {
+    const html = plan.find(c => c.key === "letter-6")!.html;
+    expect(html).toContain(FAST_TRACK.callUrl);
+    expect(html).toContain(`mailto:${FAST_TRACK.replyTo}`);
+    expect(html).toContain(FAST_TRACK.closingDayHours);
   });
 
   it("names the price only from the third Fast Track letter on", () => {

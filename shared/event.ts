@@ -62,7 +62,9 @@ export const FAST_TRACK = {
   seats: 8,
   startsLabel: "Monday, November 2",
   closesLabel: "Friday, October 30",
-  /** Where the deadline-day letter asks people to reply (no call times that day). */
+  /** Strategy Call hours on the closing day (set as a date override in Calendly). */
+  closingDayHours: "11 AM to 2 PM ET",
+  /** Where the closing letters invite a reply. */
   replyTo: "tabitha@kingdomsolutionsai.com",
   /** End of Friday, October 30, Eastern (EDT). */
   closesAt: "2026-10-31T03:59:00.000Z",
