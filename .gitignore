@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# Not tracked in this repo; Render installs with npm install
+package-lock.json
