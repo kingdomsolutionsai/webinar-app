@@ -13,7 +13,7 @@ import {
 } from "./brevo";
 import { buildDayBeforeReminder, buildHourBeforeReminder, zoomMeetingId } from "./reminders";
 import { parseEventStart } from "./eventTime";
-import { FAST_TRACK } from "../shared/event";
+import { FAST_TRACK, MAIL_OWNER } from "../shared/event";
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-secret";
 
@@ -392,6 +392,7 @@ describe("setting everything up in Brevo", () => {
     expect(brevo.contacts.get("confirmed@example.com")?.listIds).toHaveLength(2);
     expect((brevo.contacts.get("confirmed@example.com")?.attributes as Record<string, string>).CHAPTER_OPENED).toBe("yes");
     expect(brevo.contacts.get("gone@example.com")?.emailBlacklisted).toBe(true);
+    expect((brevo.contacts.get(MAIL_OWNER)?.attributes as Record<string, string>).CONFIRMED).toBe("no");
     expect(brevo.templates.size).toBe(3);
     expect(brevo.campaigns.size).toBe(9);
     expect(report.campaigns.every(c => c.status === "queued")).toBe(true);
