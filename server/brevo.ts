@@ -40,10 +40,11 @@ import {
  *    added to the "Nurture" list, which starts the day 2 / 7 / 14 automation.
  *  - Templates: letters one to three are stored as Brevo templates, which the
  *    Brevo automation sends.
- *  - Scheduled campaigns: the two reminders and letters four to six are tied
+ *  - Scheduled campaigns: the reminders and post-session letters are tied
  *    to the session date, so they are scheduled as ordinary Brevo campaigns
- *    for exact times. Brevo sends them to whoever is on the list at that
- *    moment, so late registrants are included automatically.
+ *    for exact times, using only the confirmed Nurture list. Brevo sends them
+ *    to whoever is on that list at that moment, so late confirmations are
+ *    included automatically.
  *
  * "Set up in Brevo" on the dashboard runs all of this and is safe to press
  * again at any time: it finds what already exists rather than duplicating it,
@@ -402,7 +403,7 @@ function sameEasternClock(start: Date, days: number): Date {
   return easternDayAfter(start, days, get("hour"), get("minute"));
 }
 
-/** The six session-anchored emails, with the exact moment each should send. */
+/** Session-anchored emails for confirmed registrants, with exact send times. */
 export function planEventCampaigns(input: {
   baseUrl: string;
   settings: Record<string, string>;
@@ -426,15 +427,15 @@ export function planEventCampaigns(input: {
   const dayBefore = buildDayBeforeReminder(reminderCtx);
   const hourBefore = buildHourBeforeReminder(reminderCtx);
   const reminders: PlannedCampaign[] = [
-    { key: "reminder-week", label: "Reminder: one week before", list: "all", at: sameEasternClock(start, -7), ...pick(weekBefore) },
-    { key: "reminder-day", label: "Reminder: the day before", list: "all", at: new Date(start.getTime() - day), ...pick(dayBefore) },
-    { key: "reminder-hour", label: "Reminder: one hour before", list: "all", at: new Date(start.getTime() - hour), ...pick(hourBefore) },
+    { key: "reminder-week", label: "Reminder: one week before", list: "nurture", at: sameEasternClock(start, -7), ...pick(weekBefore) },
+    { key: "reminder-day", label: "Reminder: the day before", list: "nurture", at: new Date(start.getTime() - day), ...pick(dayBefore) },
+    { key: "reminder-hour", label: "Reminder: one hour before", list: "nurture", at: new Date(start.getTime() - hour), ...pick(hourBefore) },
   ];
 
   /*
    * While the Fast Track is open, everything after the session is the Fast
    * Track arc: every other day from the morning after until the day before
-   * enrollment closes, to everyone who registered (not only the nurture list).
+   * enrollment closes, only to registrants on the confirmed nurture list.
    */
   if (fastTrackOpenFor(start)) {
     const ft = { ...letterCtx, clientStory: (settings.clientStory ?? "").trim() };
@@ -442,15 +443,15 @@ export function planEventCampaigns(input: {
     const finalMissed = buildFastTrackFinal({ ...ft, attended: false });
     return [
       ...reminders,
-      { key: "letter-4", label: "Fast Track 1: the morning after", list: "all", at: easternDayAfter(start, 1, 9), ...pick(buildFastTrackMorningAfter(ft)) },
-      { key: "letter-5", label: "Fast Track 2: agreeing is not starting", list: "all", at: sameEasternClock(start, 3), ...pick(buildFastTrackAgreeing(ft)) },
-      { key: "fast-track-3", label: "Fast Track 3: what thirty days can change", list: "all", at: sameEasternClock(start, 5), ...pick(buildFastTrackStory(ft)) },
-      { key: "fast-track-4", label: "Fast Track 4: exactly what is inside", list: "all", at: sameEasternClock(start, 7), ...pick(buildFastTrackInside(ft)) },
-      { key: "fast-track-5", label: "Fast Track 5: enrollment closes tomorrow", list: "all", at: sameEasternClock(start, 9), ...pick(buildFastTrackTomorrow(ft)) },
+      { key: "letter-4", label: "Fast Track 1: the morning after", list: "nurture", at: easternDayAfter(start, 1, 9), ...pick(buildFastTrackMorningAfter(ft)) },
+      { key: "letter-5", label: "Fast Track 2: agreeing is not starting", list: "nurture", at: sameEasternClock(start, 3), ...pick(buildFastTrackAgreeing(ft)) },
+      { key: "fast-track-3", label: "Fast Track 3: what thirty days can change", list: "nurture", at: sameEasternClock(start, 5), ...pick(buildFastTrackStory(ft)) },
+      { key: "fast-track-4", label: "Fast Track 4: exactly what is inside", list: "nurture", at: sameEasternClock(start, 7), ...pick(buildFastTrackInside(ft)) },
+      { key: "fast-track-5", label: "Fast Track 5: enrollment closes tomorrow", list: "nurture", at: sameEasternClock(start, 9), ...pick(buildFastTrackTomorrow(ft)) },
       {
         key: "letter-6",
         label: "Fast Track 6: enrollment closes tonight",
-        list: "all",
+        list: "nurture",
         at: easternDayAfter(start, 10, 9),
         subject: finalMissed.subject,
         html: conditionalMerge('contact.ATTENDED == "yes"', finalAttended.html, finalMissed.html),
@@ -464,7 +465,7 @@ export function planEventCampaigns(input: {
   const sixMissed = buildFinalLetter({ ...letterCtx, attended: false });
   return [
     ...reminders,
-    { key: "letter-4", label: "Letter 4: the morning after", list: "all", at: easternDayAfter(start, 1, 9), ...pick(replay) },
+    { key: "letter-4", label: "Letter 4: the morning after", list: "nurture", at: easternDayAfter(start, 1, 9), ...pick(replay) },
     { key: "letter-5", label: "Letter 5: three days after", list: "nurture", at: new Date(start.getTime() + 3 * day), ...pick(five) },
     {
       key: "letter-6",
