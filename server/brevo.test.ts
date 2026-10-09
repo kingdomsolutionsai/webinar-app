@@ -249,7 +249,7 @@ describe("Brevo contacts", () => {
     expect(p.attributes.CONFIRMED).toBe("yes");
   });
 
-  it("puts an unconfirmed registrant on the reminders list only", () => {
+  it("puts an unconfirmed registrant on the all-registrants list only", () => {
     const p = contactPayload({ ...base, confirmedAt: null }, ids);
     expect("listIds" in p && p.listIds).toEqual([1]);
   });
@@ -295,14 +295,19 @@ describe("the session-anchored schedule", () => {
     for (const p of plan) expect(p.at.getTime()).toBeLessThan(new Date(FAST_TRACK.closesAt).getTime());
   });
 
-  it("sends every Fast Track letter to everyone registered, with the call link", () => {
+  it("sends every Fast Track letter to confirmed registrants, with the call link", () => {
     for (const key of ["letter-4", "letter-5", "fast-track-3", "fast-track-4", "fast-track-5", "letter-6"]) {
       const p = plan.find(c => c.key === key)!;
-      expect(p.list).toBe("all");
+      expect(p.list).toBe("nurture");
       expect(p.html).toContain(FAST_TRACK.callUrl);
       expect(p.html).not.toContain("\u2014"); // no em dashes
       expect(p.html.toLowerCase()).not.toContain("founding");
     }
+  });
+
+  it("targets only confirmed registrants for all nine scheduled emails", () => {
+    expect(plan).toHaveLength(9);
+    expect(plan.every(c => c.list === "nurture")).toBe(true);
   });
 
   it("offers both a call and a reply on the closing day", () => {
@@ -334,6 +339,7 @@ describe("the session-anchored schedule", () => {
     const later = planEventCampaigns({ baseUrl: SETTINGS.publicSiteUrl, settings: SETTINGS, start: nov });
     expect(later.map(p => p.key)).toEqual(["reminder-week", "reminder-day", "reminder-hour", "letter-4", "letter-5", "letter-6"]);
     expect(later.find(p => p.key === "letter-6")!.subject).toBe("The last letter");
+    expect(later.every(c => c.list === "nurture")).toBe(true);
   });
 
   it("keeps the one-week reminder at 11 AM Eastern across a clock change", () => {
@@ -373,7 +379,7 @@ describe("the session-anchored schedule", () => {
 });
 
 describe("setting everything up in Brevo", () => {
-  it("creates the lists, copies registrants, saves templates and schedules the five emails", async () => {
+  it("creates the lists, copies registrants, saves templates and schedules all nine emails", async () => {
     const brevo = fakeBrevo();
     const { io, store } = makeIO(brevo);
     const report = await setupBrevo({ io });
@@ -389,13 +395,21 @@ describe("setting everything up in Brevo", () => {
     expect(brevo.templates.size).toBe(3);
     expect(brevo.campaigns.size).toBe(9);
     expect(report.campaigns.every(c => c.status === "queued")).toBe(true);
+    expect(report.campaigns.every(c => c.list === BREVO_LIST_NURTURE)).toBe(true);
+    const confirmedList = Number(store[BREVO_KEYS.listNurture]);
+    const unconfirmedLists = brevo.contacts.get("unconfirmed@example.com")?.listIds as number[];
+    for (const campaign of brevo.campaigns.values()) {
+      const recipients = (campaign.recipients as { listIds: number[] }).listIds;
+      expect(recipients).toEqual([confirmedList]);
+      expect(recipients.some(id => unconfirmedLists.includes(id))).toBe(false);
+    }
 
     const reminder = [...brevo.campaigns.values()].find(c => String(c.name).includes("day before"))!;
     expect(reminder.scheduledAt).toBe("2026-10-19T15:00:00.000Z");
     expect(String(reminder.htmlContent)).toContain(JOIN);
-    expect((reminder.recipients as { listIds: number[] }).listIds).toEqual([Number(store[BREVO_KEYS.listAll])]);
+    expect((reminder.recipients as { listIds: number[] }).listIds).toEqual([Number(store[BREVO_KEYS.listNurture])]);
     const last = [...brevo.campaigns.values()].find(c => String(c.name).includes("closes tonight"))!;
-    expect((last.recipients as { listIds: number[] }).listIds).toEqual([Number(store[BREVO_KEYS.listAll])]);
+    expect((last.recipients as { listIds: number[] }).listIds).toEqual([Number(store[BREVO_KEYS.listNurture])]);
   });
 
   it("can be pressed again without duplicating anything", async () => {
