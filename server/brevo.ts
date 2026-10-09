@@ -644,7 +644,7 @@ export async function setupBrevo(options: { requestOrigin?: string; io?: BrevoIO
       attributes: {
         FIRSTNAME: "Tabitha",
         LASTNAME: "Rector",
-        CONFIRMED: "yes",
+        CONFIRMED: "no",
         ATTENDED: "no",
         CHAPTER_OPENED: "no",
         DL_CHAPTER: signDownload(MAIL_OWNER, "chapter"),
