@@ -8,16 +8,16 @@ import {
   THREE_TRACKS,
 } from "@shared/event";
 import { AlertCircle, ArrowUpRight, BookOpen, Download, Loader2 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import React from "react";
 import { Link } from "wouter";
 /**
  * Reached from the link in the double opt-in confirmation email. No login:
  * the `e` (email) and `t` (signed token) query params are verified server-side
  * in `registration.confirm`, the same pattern already used by /unsubscribe.
  *
- * This is where Part One is actually handed over — the signup form only ever
- * promises "check your email" (see RegistrationForm.tsx), so everything below
- * was previously shown right after signup and now waits for this click.
+ * Loading the link only shows a confirmation prompt. A deliberate button click
+ * is required before the mutation runs, so email security scanners and link
+ * previews cannot confirm the address just by fetching the URL.
  *
  * The First-Sale Readiness Checklist is deliberately absent from this page.
  * It is no longer a signup resource — it is a reward reserved for people who
@@ -29,16 +29,6 @@ export default function Confirm() {
   const email = params.get("e") ?? "";
   const token = params.get("t") ?? "";
   const confirm = trpc.registration.confirm.useMutation();
-  // Guards against React re-running the effect twice (StrictMode in dev) and
-  // firing the mutation, and the resource-delivery email behind it, twice.
-  const firedRef = useRef(false);
-  useEffect(() => {
-    if (firedRef.current) return;
-    firedRef.current = true;
-    if (!email || !token) return;
-    confirm.mutate({ email, token });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   const missingParams = !email || !token;
   /* -------------------- Missing or malformed link -------------------- */
   if (missingParams) {
@@ -49,8 +39,38 @@ export default function Confirm() {
       />
     );
   }
-  /* -------------------- Loading -------------------- */
-  if (confirm.isIdle || confirm.isPending) {
+  /* -------------------- Explicit confirmation prompt -------------------- */
+  if (confirm.isIdle) {
+    return (
+      <div className="mx-auto w-full max-w-xl px-4 py-16">
+        <div className="border border-gold bg-white p-8 sm:p-10">
+          <div className="flex items-center gap-4">
+            <LionMark size={48} />
+            <div>
+              <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.22em] text-gold">
+                One last step
+              </p>
+              <h3 className="mt-1 font-display text-2xl font-black text-navy">
+                Confirm your email address
+              </h3>
+            </div>
+          </div>
+          <p className="mt-7 font-serif text-[17px] leading-relaxed text-ink/80">
+            Confirm this address to save your webinar seat and receive Part One. Your registration
+            will not be confirmed until you choose the button below.
+          </p>
+          <Button
+            type="button"
+            className="mt-7 w-full bg-ink font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-gold hover:bg-ink/90"
+            onClick={() => confirm.mutate({ email, token })}>
+            Confirm my email
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  /* -------------------- Loading after the person clicks -------------------- */
+  if (confirm.isPending) {
     return (
       <div className="mx-auto flex min-h-[40vh] w-full max-w-xl items-center justify-center px-4 py-16">
         <div className="flex items-center gap-3 font-sans text-[13px] uppercase tracking-[0.2em] text-ink/50">
