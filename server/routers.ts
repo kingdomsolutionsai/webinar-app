@@ -71,6 +71,11 @@ const registrationInput = z.object({
   track: z.enum(["pre_revenue", "serving_clients", "reorganizing"]).nullish(),
   /** Which free resource the visitor asked for. */
   resource: z.enum(["chapter", "checklist", "both"]).nullish(),
+  // Optional, validated campaign tags only. Never accept arbitrary referrer URLs.
+  utmSource: z.string().trim().max(100).nullish(),
+  utmMedium: z.string().trim().max(100).nullish(),
+  utmCampaign: z.string().trim().max(100).nullish(),
+  utmContent: z.string().trim().max(100).nullish(),
 });
 function toCsv(
   rows: {
@@ -79,7 +84,12 @@ function toCsv(
     email: string;
     track: string | null;
     resource: string | null;
+    utmSource?: string | null;
+    utmMedium?: string | null;
+    utmCampaign?: string | null;
+    utmContent?: string | null;
     emailStatus?: string | null;
+    confirmedAt?: Date | null;
     opened?: string[];
     createdAt: Date;
   }[],
@@ -95,7 +105,12 @@ function toCsv(
     "Email",
     "Track",
     "Resource",
+    "UTM source",
+    "UTM medium",
+    "UTM campaign",
+    "UTM post",
     "Email delivery",
+    "Confirmed",
     "Opened",
     "Registered",
   ];
@@ -106,7 +121,12 @@ function toCsv(
       escape(row.email),
       escape(row.track ?? ""),
       escape(row.resource ?? ""),
+      escape(row.utmSource ?? ""),
+      escape(row.utmMedium ?? ""),
+      escape(row.utmCampaign ?? ""),
+      escape(row.utmContent ?? ""),
       escape(row.emailStatus ?? "not attempted"),
+      escape(row.confirmedAt ? new Date(row.confirmedAt).toISOString() : ""),
       escape(row.opened && row.opened.length ? row.opened.join(" + ") : "not opened"),
       escape(new Date(row.createdAt).toISOString()),
     ].join(","),
@@ -169,6 +189,10 @@ export const appRouter = router({
         email: input.email,
         track: input.track ?? null,
         resource: input.resource ?? null,
+        utmSource: input.utmSource ?? null,
+        utmMedium: input.utmMedium ?? null,
+        utmCampaign: input.utmCampaign ?? null,
+        utmContent: input.utmContent ?? null,
       });
       // Copy to Brevo so the reminders reach them. Background: never slows signup.
       syncInBackground(input.email);
@@ -471,6 +495,10 @@ export const appRouter = router({
             email: row.email,
             track: row.track,
             resource: row.resource ?? null,
+            utmSource: row.utmSource ?? null,
+            utmMedium: row.utmMedium ?? null,
+            utmCampaign: row.utmCampaign ?? null,
+            utmContent: row.utmContent ?? null,
             createdAt: row.createdAt,
             opened: byEmail.get(row.email.toLowerCase())?.resources ?? [],
             unsubscribedAt: row.unsubscribedAt ?? null,

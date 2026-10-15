@@ -42,6 +42,10 @@ export type PipelineRow = {
   email: string;
   track: string | null;
   resource: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  utmContent?: string | null;
   createdAt: Date | string;
   /** Resources actually opened, from the download ledger. */
   opened?: string[];
@@ -84,6 +88,10 @@ export function buildNotes(row: PipelineRow): string {
     parts.push("Has not opened a resource yet");
   }
   parts.push("Source: webinar registration page");
+  if (row.utmSource) parts.push(`Campaign source: ${row.utmSource}`);
+  if (row.utmMedium) parts.push(`Campaign medium: ${row.utmMedium}`);
+  if (row.utmCampaign) parts.push(`Campaign: ${row.utmCampaign}`);
+  if (row.utmContent) parts.push(`Campaign post: ${row.utmContent}`);
   return parts.join(". ") + ".";
 }
 

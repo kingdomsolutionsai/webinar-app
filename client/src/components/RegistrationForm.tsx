@@ -66,7 +66,13 @@ export function RegistrationForm({
     setErrors(found);
     setTouched({ firstName: true, lastName: true, email: true });
     if (Object.keys(found).length > 0) return;
+    const query = new URLSearchParams(window.location.search);
+    const tag = (name: string) => query.get(name)?.trim().slice(0, 100) || undefined;
     register.mutate({
+      utmSource: tag("utm_source"),
+      utmMedium: tag("utm_medium"),
+      utmCampaign: tag("utm_campaign"),
+      utmContent: tag("utm_content"),
       firstName: values.firstName.trim(),
       lastName: values.lastName.trim(),
       email: values.email.trim(),

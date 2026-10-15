@@ -80,6 +80,19 @@ describe("notes contain facts, not inferences", () => {
     expect(notes).toContain("Opened the readiness checklist");
   });
 
+  it("preserves factual source tags for pipeline follow-up without changing qualification", () => {
+    const notes = buildNotes({
+      ...base,
+      utmSource: "linkedin",
+      utmMedium: "organic_social",
+      utmCampaign: "webinar_oct20",
+      utmContent: "post_oct16",
+    });
+    expect(notes).toContain("Campaign source: linkedin");
+    expect(notes).toContain("Campaign: webinar_oct20");
+    expect(deriveStage(base)).toBe("New lead");
+  });
+
   it("says nothing about intent, urgency or likelihood to buy", () => {
     const notes = buildNotes({ ...base, opened: ["chapter"] }).toLowerCase();
     for (const word of ["ready to buy", "hot", "likely", "eager", "urgent", "interested in"]) {

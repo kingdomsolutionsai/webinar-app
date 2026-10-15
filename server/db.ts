@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import {
@@ -99,6 +99,10 @@ export type NewRegistration = {
   email: string;
   track?: string | null;
   resource?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  utmContent?: string | null;
 };
 /**
  * Insert a registration. Email is unique, so a repeat submission from the same
@@ -117,6 +121,10 @@ export async function createRegistration(input: NewRegistration) {
       email,
       track: input.track ?? null,
       resource: input.resource ?? null,
+      utmSource: input.utmSource ?? null,
+      utmMedium: input.utmMedium ?? null,
+      utmCampaign: input.utmCampaign ?? null,
+      utmContent: input.utmContent ?? null,
     })
     .onConflictDoUpdate({
       target: registrations.email,
@@ -125,6 +133,12 @@ export async function createRegistration(input: NewRegistration) {
         lastName: input.lastName.trim(),
         track: input.track ?? null,
         resource: input.resource ?? null,
+        // Preserve first recorded campaign attribution on repeat registrations;
+        // fill gaps only when the prior signup was untagged.
+        utmSource: sql`coalesce(${registrations.utmSource}, excluded."utmSource")`,
+        utmMedium: sql`coalesce(${registrations.utmMedium}, excluded."utmMedium")`,
+        utmCampaign: sql`coalesce(${registrations.utmCampaign}, excluded."utmCampaign")`,
+        utmContent: sql`coalesce(${registrations.utmContent}, excluded."utmContent")`,
       },
     });
   const rows = await db
