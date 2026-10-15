@@ -27,6 +27,7 @@ const sampleRows = [
     utmCampaign: "webinar_oct20",
     utmContent: "post_oct16",
     emailStatus: "sent" as string | null,
+    confirmedAt: new Date("2026-08-02T15:10:00Z"),
     emailDetail: "<abc@brevo>" as string | null,
     createdAt: new Date("2026-08-02T15:04:05Z"),
     updatedAt: new Date("2026-08-02T15:04:05Z"),
@@ -44,6 +45,7 @@ const sampleRows = [
     utmCampaign: null,
     utmContent: null,
     emailStatus: null as string | null,
+    confirmedAt: null,
     emailDetail: null as string | null,
     createdAt: new Date("2026-08-01T09:00:00Z"),
     updatedAt: new Date("2026-08-01T09:00:00Z"),
@@ -314,7 +316,7 @@ describe("registration.exportCsv", () => {
     expect(filename).toMatch(/^ksai-webinar-registrations-\d{4}-\d{2}-\d{2}\.csv$/);
     expect(lines).toHaveLength(3);
     expect(lines[0]).toBe(
-      '"First name","Last name","Email","Track","Resource","UTM source","UTM medium","UTM campaign","UTM post","Email delivery","Opened","Registered"',
+      '"First name","Last name","Email","Track","Resource","UTM source","UTM medium","UTM campaign","UTM post","Email delivery","Confirmed","Opened","Registered"',
     );
   });
 
@@ -342,6 +344,13 @@ describe("registration.exportCsv", () => {
     const caller = appRouter.createCaller(makeCtx("admin"));
     const { csv } = await caller.registration.exportCsv();
     expect(csv).toContain('"checklist"');
+  });
+
+  it("includes confirmed timestamps only for actual confirmed addresses", async () => {
+    const caller = appRouter.createCaller(makeCtx("admin"));
+    const { csv } = await caller.registration.exportCsv();
+    expect(csv).toContain('"2026-08-02T15:10:00.000Z"');
+    expect(csv).toContain('"not attempted","","not opened"');
   });
 
   it("reports email delivery, distinguishing sent from never attempted", async () => {
