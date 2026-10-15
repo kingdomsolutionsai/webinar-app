@@ -52,6 +52,11 @@ export const registrations = pgTable("registrations", {
   email: varchar("email", { length: 320 }).notNull().unique(),
   track: varchar("track", { length: 40 }),
   resource: varchar("resource", { length: 40 }),
+  /** First recorded tagged signup source, not proof of a website visit. */
+  utmSource: varchar("utmSource", { length: 100 }),
+  utmMedium: varchar("utmMedium", { length: 100 }),
+  utmCampaign: varchar("utmCampaign", { length: 100 }),
+  utmContent: varchar("utmContent", { length: 100 }),
   emailStatus: varchar("emailStatus", { length: 20 }),
   emailDetail: text("emailDetail"),
   confirmedAt: timestamp("confirmedAt"),
