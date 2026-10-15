@@ -825,6 +825,13 @@ export default function Dashboard() {
   /** How many registrants have been marked attended — what unlocks the checklist. */
   const attendedCount = sorted.filter(row => Boolean(row.attendedAt)).length;
 
+  /** Source is captured at registration, not inferred from impressions or clicks. */
+  const attributedCount = sorted.filter(row => Boolean(row.utmSource)).length;
+  const linkedInCount = sorted.filter(row => row.utmSource?.toLowerCase() === "linkedin").length;
+  const linkedInConfirmed = sorted.filter(
+    row => row.utmSource?.toLowerCase() === "linkedin" && Boolean(row.confirmedAt),
+  ).length;
+
   /** Short label for the resource column; "both" is possible via a repeat signup. */
   const resourceLabel = (id: string) =>
     id === "both" ? "Both" : (RESOURCES.find(item => item.id === id)?.label ?? id);
@@ -948,6 +955,28 @@ export default function Dashboard() {
           })}
         </div>
 
+        <section className="border border-border bg-white px-7 py-6">
+          <h2 className="font-display text-lg font-bold text-navy">Registration attribution</h2>
+          <p className="mt-2 font-serif text-[15px] text-ink/65">
+            Counts below describe submissions carrying campaign tags. Untagged signups have
+            unknown origin; LinkedIn impressions are not the same as registration visits.
+          </p>
+          <div className="mt-5 grid gap-5 sm:grid-cols-3">
+            <div>
+              <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.15em] text-ink/50">Tagged registrations</p>
+              <p className="mt-2 font-display text-3xl font-black text-navy">{isLoading ? "—" : attributedCount}</p>
+            </div>
+            <div>
+              <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.15em] text-ink/50">LinkedIn registrations</p>
+              <p className="mt-2 font-display text-3xl font-black text-navy">{isLoading ? "—" : linkedInCount}</p>
+            </div>
+            <div>
+              <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.15em] text-ink/50">LinkedIn confirmed</p>
+              <p className="mt-2 font-display text-3xl font-black text-navy">{isLoading ? "—" : linkedInConfirmed}</p>
+            </div>
+          </div>
+        </section>
+
         <EventDetailsEditor />
 
         <BrevoPanel />
@@ -1014,6 +1043,11 @@ export default function Dashboard() {
                     </th>
                     <th className="px-5 py-3.5 text-left">
                       <span className="font-sans text-[10px] font-bold uppercase tracking-[0.18em] text-white/75">
+                        Signup source
+                      </span>
+                    </th>
+                    <th className="px-5 py-3.5 text-left">
+                      <span className="font-sans text-[10px] font-bold uppercase tracking-[0.18em] text-white/75">
                         Wanted first
                       </span>
                     </th>
@@ -1051,6 +1085,10 @@ export default function Dashboard() {
                       <td className="px-5 py-4 font-serif text-[15px] text-ink/80">{row.email}</td>
                       <td className="px-5 py-4 font-serif text-[15px] text-ink/65">
                         {trackLabel(row.track)}
+                      </td>
+                      <td className="px-5 py-4 font-serif text-[14px] text-ink/65"
+                        title={[row.utmSource, row.utmMedium, row.utmCampaign, row.utmContent].filter(Boolean).join(" · ") || "Not tagged"}>
+                        {row.utmSource || "Unknown"}
                       </td>
                       <td className="px-5 py-4">
                         {row.resource ? (
