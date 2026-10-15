@@ -89,6 +89,7 @@ function toCsv(
     utmCampaign?: string | null;
     utmContent?: string | null;
     emailStatus?: string | null;
+    confirmedAt?: Date | null;
     opened?: string[];
     createdAt: Date;
   }[],
@@ -109,6 +110,7 @@ function toCsv(
     "UTM campaign",
     "UTM post",
     "Email delivery",
+    "Confirmed",
     "Opened",
     "Registered",
   ];
@@ -124,6 +126,7 @@ function toCsv(
       escape(row.utmCampaign ?? ""),
       escape(row.utmContent ?? ""),
       escape(row.emailStatus ?? "not attempted"),
+      escape(row.confirmedAt ? new Date(row.confirmedAt).toISOString() : ""),
       escape(row.opened && row.opened.length ? row.opened.join(" + ") : "not opened"),
       escape(new Date(row.createdAt).toISOString()),
     ].join(","),
@@ -492,6 +495,10 @@ export const appRouter = router({
             email: row.email,
             track: row.track,
             resource: row.resource ?? null,
+            utmSource: row.utmSource ?? null,
+            utmMedium: row.utmMedium ?? null,
+            utmCampaign: row.utmCampaign ?? null,
+            utmContent: row.utmContent ?? null,
             createdAt: row.createdAt,
             opened: byEmail.get(row.email.toLowerCase())?.resources ?? [],
             unsubscribedAt: row.unsubscribedAt ?? null,
