@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const deliver = vi.fn(async () => ({ ok: true as const, messageId: "test-message" }));
+const deliver = vi.fn(async (_input: { text: string; html: string }) => ({ ok: true as const, messageId: "test-message" }));
 vi.mock("./email", () => ({ sendEmail: deliver }));
 vi.mock("./db", () => ({ recordDownload: vi.fn() }));
 vi.mock("./brevo", () => ({ syncInBackground: vi.fn() }));
