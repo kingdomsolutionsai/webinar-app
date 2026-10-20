@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Unsubscribe from "./pages/Unsubscribe";
 import Confirm from "./pages/Confirm";
+import Feedback from "./pages/Feedback";
 function Router() {
   return (
     <Switch>
@@ -18,6 +19,8 @@ function Router() {
       <Route path={"/unsubscribe"} component={Unsubscribe} />
       {/* Public on purpose: reached from the double opt-in confirmation email, no login. */}
       <Route path={"/confirm"} component={Confirm} />
+      {/* Public attendee feedback survey; no account is required. */}
+      <Route path={"/feedback"} component={Feedback} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
