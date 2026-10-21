@@ -104,3 +104,22 @@ export const sequenceSends = pgTable(
 );
 
 export type SequenceSend = typeof sequenceSends.$inferSelect;
+
+/** One confirmed seat per email per event, without altering earlier attendance. */
+export const sessionRegistrations = pgTable("sessionRegistrations", {
+  id: serial("id").primaryKey(),
+  sessionKey: varchar("sessionKey", { length: 10 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  firstName: varchar("firstName", { length: 120 }).notNull(),
+  lastName: varchar("lastName", { length: 120 }).notNull(),
+  track: varchar("track", { length: 40 }),
+  confirmedAt: timestamp("confirmedAt"),
+  attendedAt: timestamp("attendedAt"),
+  unsubscribedAt: timestamp("unsubscribedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+}, table => [
+  unique("sessionRegistrations_event_email_idx").on(table.sessionKey, table.email),
+  index("sessionRegistrations_event_idx").on(table.sessionKey),
+]);
+export type SessionRegistration = typeof sessionRegistrations.$inferSelect;

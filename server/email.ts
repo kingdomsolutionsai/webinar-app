@@ -66,10 +66,13 @@ export function buildConfirmEmail(input: {
   logoUrl?: string;
   /** "Tuesday, October 20, 2026 at 11:00 AM ET" while a session is upcoming. */
   sessionWhen?: string;
+  sessionOnly?: boolean;
 }) {
   const name = escapeHtml(input.firstName.trim() || "friend");
   const when = input.sessionWhen?.trim();
-  const ask = when
+  const ask = input.sessionOnly
+    ? `Please confirm your email to save your seat${when ? ` for ${when}` : ""}. Your private Zoom details will arrive after confirmation.`
+    : when
     ? `Please confirm this is your email address so I can save your seat for ${when}. One click and your Zoom link and Part One of the book are sent straight to this inbox.`
     : `Please confirm this is your email address so I know Part One of the book is going somewhere real. Nothing else needs to happen. One click and the file is sent straight to this inbox.`;
   const html = `<!doctype html>
@@ -97,7 +100,7 @@ export function buildConfirmEmail(input: {
   <tr><td style="height:3px;background-color:${C.gold};line-height:3px;font-size:0;">&nbsp;</td></tr>
   <!-- Greeting -->
   <tr><td style="padding:38px 36px 0;">
-    <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">One click, ${name}, and it's on its way.</h1>
+    <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">${input.sessionOnly ? `Confirm your seat, ${name}.` : `One click, ${name}, and it's on its way.`}</h1>
     <div style="width:52px;height:3px;background-color:${C.gold};margin:18px 0 0;"></div>
     <p style="margin:22px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
       ${escapeHtml(ask)}
@@ -107,7 +110,7 @@ export function buildConfirmEmail(input: {
   <tr><td style="padding:30px 36px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${C.gold};background-color:${C.goldTint};">
       <tr><td style="padding:26px 28px;text-align:center;">
-        <p style="margin:0 0 18px;font-family:${DISPLAY};font-size:18px;line-height:1.3;font-weight:700;color:${C.navy};">${escapeHtml(SAMPLE_CHAPTER.title)}</p>
+        <p style="margin:0 0 18px;font-family:${DISPLAY};font-size:18px;line-height:1.3;font-weight:700;color:${C.navy};">${input.sessionOnly ? "What Entrepreneurs Need to Know — How to Build in the Right Order" : escapeHtml(SAMPLE_CHAPTER.title)}</p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
           <tr><td style="background-color:${C.ink};">
             <a href="${input.confirmUrl}" style="display:inline-block;padding:14px 30px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${C.gold};text-decoration:none;">Confirm my email</a>
@@ -138,7 +141,7 @@ export function buildConfirmEmail(input: {
 </body>
 </html>`;
   const text = [
-    `One click, ${input.firstName.trim() || "friend"}, and it's on its way.`,
+    input.sessionOnly ? `Confirm your seat, ${input.firstName.trim() || "friend"}.` : `One click, ${input.firstName.trim() || "friend"}, and it's on its way.`,
     ``,
     ask,
     ``,
@@ -164,12 +167,14 @@ export async function sendConfirmEmail(input: {
   confirmUrl: string;
   logoUrl?: string;
   sessionWhen?: string;
+  sessionOnly?: boolean;
 }): Promise<EmailResult> {
   const message = buildConfirmEmail({
     firstName: input.firstName,
     confirmUrl: input.confirmUrl,
     logoUrl: input.logoUrl,
     sessionWhen: input.sessionWhen,
+    sessionOnly: input.sessionOnly,
   });
   return sendEmail({
     to: { email: input.email, name: `${input.firstName} ${input.lastName}`.trim() },
@@ -198,6 +203,7 @@ export function buildRegistrantEmail(input: {
    * link) while a session is upcoming. Absent means Part One only.
    */
   seat?: { when: string; html: string; text: string[] };
+  sessionOnly?: boolean;
 }) {
   const { firstName, baseUrl, seat } = input;
   const chapterUrl = input.trackedUrls?.chapter ?? absolute(baseUrl, SAMPLE_CHAPTER.url);
@@ -634,8 +640,9 @@ export async function sendSignupEmails(input: {
   unsubscribeUrl?: string;
   trackedUrls?: { chapter: string; checklist?: string };
   seat?: { when: string; html: string; text: string[] };
+  sessionOnly?: boolean;
 }): Promise<EmailResult> {
-  const registrant = buildRegistrantEmail({
+  const registrant = input.sessionOnly ? null : buildRegistrantEmail({
     firstName: input.firstName,
     baseUrl: input.baseUrl,
     logoUrl: input.logoUrl,
@@ -643,11 +650,12 @@ export async function sendSignupEmails(input: {
     trackedUrls: input.trackedUrls,
     seat: input.seat,
   });
+  const content = registrant ?? { subject: `Your seat is confirmed: ${input.seat?.when ?? "the next webinar"}`, html: `<div style="font:17px/1.7 Georgia,serif;padding:28px"><h2>What Entrepreneurs Need to Know</h2><h3>How to Build in the Right Order</h3><p>Welcome, ${input.firstName.replace(/[<>&"]/g, "")}. Your seat is confirmed.</p>${input.seat?.html ?? "<p>Watch your inbox for event details.</p>"}<p>We look forward to seeing you live.</p><p>Tabitha Rector<br>Kingdom Solutions AI™</p><p><a href="${input.unsubscribeUrl ?? "#"}">Unsubscribe</a></p></div>`, text: [`Your seat is confirmed for ${input.seat?.when ?? "the next webinar"}.`, ...(input.seat?.text ?? [])].join("\n") };
   const result = await sendEmail({
     to: { email: input.email, name: `${input.firstName} ${input.lastName}`.trim() },
-    subject: registrant.subject,
-    html: registrant.html,
-    text: registrant.text,
+    subject: content.subject,
+    html: content.html,
+    text: Array.isArray(content.text) ? content.text.join("\n") : content.text,
     tags: ["resource-delivery"],
     // Lets Gmail and Outlook offer their own one-click unsubscribe control.
     unsubscribeUrl: input.unsubscribeUrl,
