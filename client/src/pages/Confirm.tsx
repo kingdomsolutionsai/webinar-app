@@ -94,6 +94,8 @@ export default function Confirm() {
   const chosen = THREE_TRACKS.find(item => item.id === track);
   const href = downloads?.chapter ?? SAMPLE_CHAPTER.url;
   const currentSession = Boolean(sessionKey);
+  // Keep the November 17 workshop experience separate from earlier sessions.
+  const isNovember17 = sessionKey === "2026-11-17";
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-16">
       <div className="border border-gold bg-white p-8 sm:p-10">
@@ -110,7 +112,11 @@ export default function Confirm() {
         </div>
         <div className="mt-7 h-[3px] w-14 bg-gold" />
         <p className="mt-7 font-serif text-[17px] leading-relaxed text-ink/80">
-          {currentSession ? "Your Zoom details are being sent to your inbox. Save that message so you can join us live." : "Your resource is on its way to your inbox. If it has not arrived in a few minutes, please check your spam folder."}
+          {isNovember17
+            ? "Your seat for Tuesday, November 17 is confirmed. Your private Zoom details are being sent to your inbox. Save that email so you can join us live."
+            : currentSession
+              ? "Your Zoom details are being sent to your inbox. Save that message so you can join us live."
+              : "Your resource is on its way to your inbox. If it has not arrived in a few minutes, please check your spam folder."}
         </p>
         {/* Legacy resource is for the original event only. */}
         {!currentSession ? (<>
@@ -148,33 +154,59 @@ export default function Confirm() {
           </p>
         </div>
         </>) : null}
-        {/* The one-sentence exercise from the close of the session. */}
-        <div className="mt-7 border border-navy/25 bg-secondary/50 p-6">
-          <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-navy">
-            {EXERCISE_PROMPT.heading}
-          </p>
-          <p className="mt-3 font-serif text-[17px] leading-relaxed text-ink/85">
-            {EXERCISE_PROMPT.instruction}
-          </p>
-          <div className="mt-5 space-y-4 border-t border-navy/15 pt-5">
-            <div>
-              <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-green">
-                {EXERCISE_PROMPT.checkLabel}
+        {isNovember17 ? (
+          <>
+            <div className="mt-7 border border-navy/25 bg-secondary/50 p-6">
+              <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-navy">
+                A simple question before we meet
               </p>
-              <p className="mt-1.5 font-serif text-[16px] leading-relaxed text-ink/75">
-                {EXERCISE_PROMPT.check}
+              <p className="mt-3 font-serif text-[17px] leading-relaxed text-ink/85">
+                Who do you serve, and what specific problem do you help them solve?
+                Write one sentence in everyday language. It doesn't need to be perfect.
               </p>
             </div>
-            <div>
-              <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-gold-dark">
-                {EXERCISE_PROMPT.reframeLabel}
+            <div className="mt-7 border-t border-border pt-6">
+              <p className="font-display text-[19px] font-bold text-navy">
+                Come ready to discover your next step.
               </p>
-              <p className="mt-1.5 font-serif text-[16px] leading-relaxed text-ink/75">
-                {EXERCISE_PROMPT.reframe}
+              <p className="mt-3 font-serif text-[16px] leading-relaxed text-ink/75">
+                During our webinar, we'll explore the eight essential business systems,
+                identify where your business needs attention, and choose one practical
+                action for the next 30 days. Bring a notebook and your questions.
               </p>
+            </div>
+          </>
+        ) : (
+          <>
+          {/* The one-sentence exercise from the close of the session. */}
+          <div className="mt-7 border border-navy/25 bg-secondary/50 p-6">
+            <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-navy">
+              {EXERCISE_PROMPT.heading}
+            </p>
+            <p className="mt-3 font-serif text-[17px] leading-relaxed text-ink/85">
+              {EXERCISE_PROMPT.instruction}
+            </p>
+            <div className="mt-5 space-y-4 border-t border-navy/15 pt-5">
+              <div>
+                <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-green">
+                  {EXERCISE_PROMPT.checkLabel}
+                </p>
+                <p className="mt-1.5 font-serif text-[16px] leading-relaxed text-ink/75">
+                  {EXERCISE_PROMPT.check}
+                </p>
+              </div>
+              <div>
+                <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-gold-dark">
+                  {EXERCISE_PROMPT.reframeLabel}
+                </p>
+                <p className="mt-1.5 font-serif text-[16px] leading-relaxed text-ink/75">
+                  {EXERCISE_PROMPT.reframe}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+          </>
+        )}
         {chosen ? (
           <div className="mt-7 border-l-2 border-navy pl-5">
             <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/45">
@@ -186,29 +218,34 @@ export default function Confirm() {
             </p>
           </div>
         ) : null}
-        {/*
-          The Capacity Leak Audit™ invitation. Deliberately quieter than
-          everything above it — a hairline rule rather than a filled panel —
-          because the free resource is the promise of this screen and must
-          remain its point. The heading is a question, so a reader who does not
-          have this problem reads one line and moves on without friction.
-        */}
-        <div className="mt-8 border-t border-border pt-6">
-          <p className="font-display text-[17px] font-bold text-navy">
-            {AUDIT_INVITATION.heading}
-          </p>
-          <p className="mt-2 font-serif text-[16px] leading-relaxed text-ink/70">
-            {AUDIT_INVITATION.body}
-          </p>
-          <a
-            href={AUDIT_INVITATION.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 inline-flex items-center gap-2 border border-navy px-5 py-2.5 font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-navy transition-colors duration-200 hover:bg-navy hover:text-white">
-            {AUDIT_INVITATION.cta}
-            <ArrowUpRight className="size-3.5" />
-          </a>
-        </div>
+        {/* Keep the historical audit invitation only on earlier confirmation pages. */}
+        {!isNovember17 ? (
+          <>
+          {/*
+            The Capacity Leak Audit™ invitation. Deliberately quieter than
+            everything above it — a hairline rule rather than a filled panel —
+            because the free resource is the promise of this screen and must
+            remain its point. The heading is a question, so a reader who does not
+            have this problem reads one line and moves on without friction.
+          */}
+          <div className="mt-8 border-t border-border pt-6">
+            <p className="font-display text-[17px] font-bold text-navy">
+              {AUDIT_INVITATION.heading}
+            </p>
+            <p className="mt-2 font-serif text-[16px] leading-relaxed text-ink/70">
+              {AUDIT_INVITATION.body}
+            </p>
+            <a
+              href={AUDIT_INVITATION.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center gap-2 border border-navy px-5 py-2.5 font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-navy transition-colors duration-200 hover:bg-navy hover:text-white">
+              {AUDIT_INVITATION.cta}
+              <ArrowUpRight className="size-3.5" />
+            </a>
+          </div>
+          </>
+        ) : null}
         <p className="mt-8 font-serif text-[15px] italic text-ink/55">
           Lead well. &mdash; Tabitha Rector, Founder Kingdom Solutions AI&trade;
         </p>
