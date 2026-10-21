@@ -57,8 +57,7 @@ export default function Confirm() {
             </div>
           </div>
           <p className="mt-7 font-serif text-[17px] leading-relaxed text-ink/80">
-            Confirm this address to save your webinar seat. Your registration
-            will not be confirmed until you choose the button below.
+            Confirm this address to save your webinar seat. Your private Zoom details will be sent once you confirm.
           </p>
           <Button
             type="button"
@@ -111,8 +110,7 @@ export default function Confirm() {
         </div>
         <div className="mt-7 h-[3px] w-14 bg-gold" />
         <p className="mt-7 font-serif text-[17px] leading-relaxed text-ink/80">
-          A copy is also on its way to your inbox, so you will not lose it. If it has not
-          arrived in a few minutes, please check your spam folder.
+          {currentSession ? "Your Zoom details are being sent to your inbox. Save that message so you can join us live." : "Your resource is on its way to your inbox. If it has not arrived in a few minutes, please check your spam folder."}
         </p>
         {/* Legacy resource is for the original event only. */}
         {!currentSession ? (<>
