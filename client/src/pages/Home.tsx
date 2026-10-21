@@ -160,14 +160,14 @@ function buildChatContext(event: {
   return [
     "WEBINAR FACTS (from the live registration page the visitor is on right now; treat these as current and accurate, and answer date, time and agenda questions directly from them):",
     "",
-    "Title: What Entrepreneurs Need to Know",
+    "Title: What Entrepreneurs Need to Know — How to Build in the Right Order",
     "Host: Tabitha Rector, Founder of Kingdom Solutions AI",
     "Website: whatentrepreneursneedtoknow.com",
     schedule,
     "",
     "What it is: a live session that walks the correct sequence for building a business: the eight systems every business runs on, the correct start order, and where to begin with AI while human authority stays intact. Founders rarely fail for lack of talent or a worthy idea; they fail because they did the right things in the wrong order.",
     "",
-    "The eight parts covered, in decision order:",
+    "The webinar is about the eight systems of a business, how they fit together, identifying the leading business gap, and choosing ONE specific 30-day action. The book may be mentioned as a supporting resource, but is not the product or focus of the webinar. Background reference topics:",
     ...EIGHT_PARTS.map(p => `${p.n}. ${p.title}: ${p.body}`),
     "",
     "Three takeaways:",
@@ -296,15 +296,26 @@ export default function Home() {
               </p>
             </div>
           </div>
-          {/* Book cover */}
+          {/* Webinar identity: business-building workshop, not a book promotion. */}
           <div className="flex justify-center lg:justify-end">
-            <div className="relative">
-              <div className="absolute -inset-3 border border-gold/30" aria-hidden="true" />
-              <img
-                src={BOOK_COVER}
-                alt="What Every New Entrepreneur Needs to Know — book cover"
-                className="relative h-[440px] w-[293px] object-contain shadow-[0_28px_70px_-24px_rgba(201,162,39,0.45)] sm:h-[520px] sm:w-[347px]"
-              />
+            <div className="relative w-full max-w-[390px] border border-gold/60 bg-[#101010] p-3 shadow-[0_28px_70px_-24px_rgba(201,162,39,0.35)]">
+              <div className="flex min-h-[440px] flex-col justify-between border border-gold/25 px-8 py-10 sm:min-h-[510px] sm:px-10">
+                <div>
+                  <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.22em] text-gold">Kingdom Solutions AI™</p>
+                  <div className="mt-7 h-px w-14 bg-gold" />
+                  <p className="mt-10 font-sans text-[11px] uppercase tracking-[0.2em] text-white/65">Live Business-Building Webinar</p>
+                  <h2 className="mt-5 font-display text-[36px] font-bold leading-[1.15] text-white sm:text-[42px]">
+                    What Entrepreneurs <span className="text-gold">Need to Know</span>
+                  </h2>
+                  <p className="mt-7 font-display text-[23px] italic leading-snug text-white">How to Build in the Right Order</p>
+                </div>
+                <div>
+                  <div className="mb-6 h-px w-full bg-gold/35" />
+                  <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.15em] text-gold">GET 2027 READY!</p>
+                  <p className="mt-3 font-sans text-[12px] leading-relaxed text-white/75">Eight systems. Your starting point. One practical next action.</p>
+                  <p className="mt-6 font-serif text-[16px] text-white">Tabitha Rector <span className="text-white/50">| Founder</span></p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
