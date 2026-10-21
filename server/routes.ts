@@ -141,7 +141,7 @@ export async function feedbackHandler(req: Request, res: Response) {
   active.count++;
   feedbackRate.set(key, active);
   if (feedbackRate.size > 1500) {
-    for (const [entry, state] of feedbackRate) if (state.reset < now) feedbackRate.delete(entry);
+    feedbackRate.forEach((state, entry) => { if (state.reset < now) feedbackRate.delete(entry); });
     if (feedbackRate.size > 1500) feedbackRate.clear();
   }
 
