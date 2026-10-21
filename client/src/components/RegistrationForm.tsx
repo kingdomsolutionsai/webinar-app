@@ -91,11 +91,11 @@ export function RegistrationForm({
         </div>
         <div className="mt-7 h-[3px] w-14 bg-gold" />
         <p className="mt-7 font-serif text-[17px] leading-relaxed text-ink/80">
-          I just sent a confirmation link to the address you entered. Click it and Part One
-          of the book is sent straight to your inbox.
+          I just sent a confirmation link to the address you entered. Please click it to confirm
+          your email and reserve your seat.
           {mode === "waitlist"
             ? " You will also be first to know when the live session is scheduled."
-            : " That is also what locks in your seat for the session."}
+            : " Your private Zoom details will be sent after confirmation."}
         </p>
         <p className="mt-3 flex items-start gap-2 font-serif text-[15px] leading-relaxed text-ink/60">
           <Mail className="mt-1 size-3.5 shrink-0 text-gold" />
