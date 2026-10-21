@@ -617,6 +617,36 @@ function SequencePanel() {
   );
 }
 
+function CurrentSessionPanel() {
+  const utils=trpc.useUtils();
+  const {data:rows,isLoading}=trpc.registration.listCurrent.useQuery();
+  const attendance=trpc.registration.markCurrentAttended.useMutation({
+    onSuccess:r=>{if(r.ok){toast.success("Session attendance updated");utils.registration.listCurrent.invalidate();}
+      else toast.error(r.error);}
+  });
+  return <section className="border border-gold/40 bg-white">
+    <div className="border-b border-gold/20 px-7 py-6">
+      <h2 className="font-display text-xl font-bold text-navy">Current webinar: confirmed seats & attendance</h2>
+      <p className="mt-2 font-serif text-[15px] text-ink/60">The current webinar has its own registration list. October registrants are not enrolled automatically. Only confirmed current-event registrations qualify for reminders.</p>
+    </div>
+    <div className="overflow-x-auto">
+      {isLoading?<p className="p-7 font-serif">Loading current registrations…</p>:
+       !rows?.length?<p className="p-7 font-serif">No registrations yet for the current webinar.</p>:
+       <table className="w-full min-w-[540px] text-left">
+        <thead className="bg-ink font-sans text-[11px] uppercase tracking-wide text-white"><tr><th className="px-6 py-3">Registrant</th><th className="px-6 py-3">Status</th><th className="px-6 py-3">Live attendance</th></tr></thead>
+        <tbody>{rows.map(row=><tr key={row.id} className="border-b border-border">
+          <td className="px-6 py-4"><span className="font-semibold">{row.firstName} {row.lastName}</span><br/><span className="text-[13px] text-ink/60">{row.email}</span></td>
+          <td className="px-6 py-4 font-serif">{row.unsubscribedAt?"Opted out":row.confirmedAt?"Confirmed":"Awaiting email confirmation"}</td>
+          <td className="px-6 py-4"><button disabled={!row.confirmedAt||!!row.unsubscribedAt||attendance.isPending}
+            className="border border-gold px-3 py-2 text-[11px] font-bold uppercase text-ink hover:bg-gold-tint disabled:opacity-30"
+            onClick={()=>attendance.mutate({email:row.email,attended:!row.attendedAt})}>
+            {row.attendedAt?"Attended ✓ — undo":"Mark attended"}
+          </button></td></tr>)}</tbody>
+       </table>}
+    </div>
+  </section>;
+}
+
 /* ------------------------------------------------------------------ *
  * Dashboard
  * ------------------------------------------------------------------ */
@@ -950,6 +980,8 @@ export default function Dashboard() {
 
         <EventDetailsEditor />
 
+        <CurrentSessionPanel />
+
         <BrevoPanel />
         <SequencePanel />
 
@@ -957,7 +989,7 @@ export default function Dashboard() {
         <section className="border border-border bg-white">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-7 py-5">
             <div>
-              <h2 className="font-display text-lg font-bold text-navy">Registrations</h2>
+              <h2 className="font-display text-lg font-bold text-navy">Original registrants (legacy archive)</h2>
               <p className="mt-1 font-serif text-[15px] text-ink/60">
                 Click any column heading to sort.
               </p>
