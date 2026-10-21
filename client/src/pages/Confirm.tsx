@@ -28,6 +28,7 @@ export default function Confirm() {
   const params = new URLSearchParams(window.location.search);
   const email = params.get("e") ?? "";
   const token = params.get("t") ?? "";
+  const sessionKey = params.get("s") ?? undefined;
   const confirm = trpc.registration.confirm.useMutation();
   const missingParams = !email || !token;
   /* -------------------- Missing or malformed link -------------------- */
@@ -56,13 +57,13 @@ export default function Confirm() {
             </div>
           </div>
           <p className="mt-7 font-serif text-[17px] leading-relaxed text-ink/80">
-            Confirm this address to save your webinar seat and receive Part One. Your registration
+            Confirm this address to save your webinar seat. Your registration
             will not be confirmed until you choose the button below.
           </p>
           <Button
             type="button"
             className="mt-7 w-full bg-ink font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-gold hover:bg-ink/90"
-            onClick={() => confirm.mutate({ email, token })}>
+            onClick={() => confirm.mutate({ email, token, sessionKey })}>
             Confirm my email
           </Button>
         </div>
@@ -93,6 +94,7 @@ export default function Confirm() {
   const { firstName, track, downloads } = confirm.data;
   const chosen = THREE_TRACKS.find(item => item.id === track);
   const href = downloads?.chapter ?? SAMPLE_CHAPTER.url;
+  const currentSession = Boolean(sessionKey);
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-16">
       <div className="border border-gold bg-white p-8 sm:p-10">
@@ -100,7 +102,7 @@ export default function Confirm() {
           <LionMark size={48} />
           <div>
             <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.22em] text-gold">
-              Part One is ready
+              {currentSession ? "Your webinar seat is confirmed" : "Part One is ready"}
             </p>
             <h3 className="mt-1 font-display text-2xl font-black text-navy">
               Confirmed, {firstName}.
@@ -112,7 +114,8 @@ export default function Confirm() {
           A copy is also on its way to your inbox, so you will not lose it. If it has not
           arrived in a few minutes, please check your spam folder.
         </p>
-        {/* The single free resource. */}
+        {/* Legacy resource is for the original event only. */}
+        {!currentSession ? (<>
         <div className="mt-7 space-y-3">
           <div className="border border-gold bg-gold-tint p-6">
             <div className="flex items-start gap-3">
@@ -146,6 +149,7 @@ export default function Confirm() {
             there.
           </p>
         </div>
+        </>) : null}
         {/* The one-sentence exercise from the close of the session. */}
         <div className="mt-7 border border-navy/25 bg-secondary/50 p-6">
           <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-navy">
