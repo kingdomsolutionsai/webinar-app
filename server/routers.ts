@@ -47,6 +47,7 @@ import {
 } from "./sequence";
 import { unsubscribeUrl, verifyUnsubscribe } from "./unsubscribe";
 import { brevoStatus, sendBrevoTests, setupBrevo, syncInBackground } from "./brevo";
+import { sessionKeyFor, createSessionRegistration, confirmSessionRegistration, listSessionRegistrations, setSessionAttendance, unsubscribeSessions } from "./sessions";
 /** Only the project owner may read registrations or edit event details. */
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") {
@@ -163,7 +164,12 @@ export const appRouter = router({
      * never treated as a verified lead.
      */
     create: publicProcedure.input(registrationInput).mutation(async ({ input, ctx }) => {
-      const row = await createRegistration({
+      const currentSettings = await getAllEventSettings();
+      const sessionKey = sessionKeyFor(currentSettings.date);
+      const row = sessionKey ? await createSessionRegistration({
+        sessionKey, firstName: input.firstName, lastName: input.lastName, email: input.email,
+        track: input.track ?? null,
+      }) : await createRegistration({
         firstName: input.firstName,
         lastName: input.lastName,
         email: input.email,
@@ -171,7 +177,7 @@ export const appRouter = router({
         resource: input.resource ?? null,
       });
       // Copy to Brevo so the reminders reach them. Background: never slows signup.
-      syncInBackground(input.email);
+      if (!sessionKey) syncInBackground(input.email);
       // Wrapped so that no mail failure can turn a successful signup into an
       // error for someone who has already typed their details — they still see
       // the "check your email" confirmation panel either way.
@@ -194,7 +200,7 @@ export const appRouter = router({
             firstName: row?.firstName ?? input.firstName,
             lastName: row?.lastName ?? input.lastName,
             email: input.email,
-            confirmUrl: confirmUrl(baseUrl, input.email),
+            confirmUrl: confirmUrl(baseUrl, input.email, sessionKey ?? undefined),
             logoUrl: baseUrl ? `${baseUrl}${LION_MARK_URL}` : undefined,
             sessionWhen: (() => {
               const session = upcomingSession(storedForLinks);
@@ -202,7 +208,7 @@ export const appRouter = router({
             })(),
           });
           emailed = result.ok;
-          await setRegistrationEmailStatus(
+          if (!sessionKey) await setRegistrationEmailStatus(
             input.email,
             result.ok ? "sent" : "failed",
             result.ok ? result.messageId : result.error,
@@ -211,7 +217,7 @@ export const appRouter = router({
         }
       } catch (error) {
         console.error("[Email] Unexpected send error:", error);
-        await setRegistrationEmailStatus(
+        if (!sessionKey) await setRegistrationEmailStatus(
           input.email,
           "failed",
           error instanceof Error ? error.message : "Unknown error",
@@ -236,18 +242,19 @@ export const appRouter = router({
     confirm: publicProcedure
       .input(z.object({ email: z.string().email(), token: z.string().min(8) }))
       .mutation(async ({ input, ctx }) => {
-        if (!verifyConfirm(input.email, input.token)) {
+        if (!verifyConfirm(input.email, input.token, input.sessionKey)) {
           return { ok: false as const, reason: "invalid" as const };
         }
-        const { row, alreadyConfirmed } = await confirmRegistration(input.email);
+        const { row, alreadyConfirmed } = input.sessionKey ? await confirmSessionRegistration(input.sessionKey, input.email) : await confirmRegistration(input.email);
         if (!row) {
           return { ok: false as const, reason: "not_found" as const };
         }
         const stored = await getAllEventSettings();
         const baseUrl = resolveEmailBaseUrl(stored[PUBLIC_URL_KEY], resolveBaseUrl(ctx.req));
+        if (input.sessionKey && sessionKeyFor(stored.date) !== input.sessionKey) return {ok:false as const,reason:"session_changed" as const};
         if (!alreadyConfirmed) {
           // Joining the Nurture list in Brevo is what starts the day 2/7/14 letters.
-          syncInBackground(row.email);
+          if (!input.sessionKey) syncInBackground(row.email);
           try {
             if (await isUnsubscribed(row.email)) {
               await setRegistrationEmailStatus(row.email, "skipped", "Recipient has unsubscribed");
@@ -257,14 +264,15 @@ export const appRouter = router({
                 lastName: row.lastName,
                 email: row.email,
                 track: row.track,
-                resource: (row.resource ?? null) as never,
+                resource: ("resource" in row ? (row.resource ?? null) : null) as never,
                 baseUrl,
                 logoUrl: baseUrl ? `${baseUrl}${LION_MARK_URL}` : undefined,
                 unsubscribeUrl: unsubscribeUrl(baseUrl, row.email),
                 trackedUrls: trackedUrlsFor(baseUrl, row.email),
                 seat: seatFor(stored),
+                sessionOnly: Boolean(input.sessionKey),
               });
-              await setRegistrationEmailStatus(
+              if (!input.sessionKey) await setRegistrationEmailStatus(
                 row.email,
                 result.ok ? "sent" : "failed",
                 result.ok ? result.messageId : result.error,
@@ -273,7 +281,7 @@ export const appRouter = router({
             }
           } catch (error) {
             console.error("[Email] Unexpected send error:", error);
-            await setRegistrationEmailStatus(
+            if (!input.sessionKey) await setRegistrationEmailStatus(
               row.email,
               "failed",
               error instanceof Error ? error.message : "Unknown error",
@@ -287,10 +295,11 @@ export const appRouter = router({
           alreadyConfirmed,
           // Counted link, so an open from the confirm page is recorded the same
           // way as an open from the delivery email.
-          downloads: trackedUrlsFor(baseUrl, row.email),
+          downloads: input.sessionKey ? undefined : trackedUrlsFor(baseUrl, row.email),
         };
       }),
     list: adminProcedure.query(() => listRegistrations()),
+    listCurrent: adminProcedure.query(async () => { const v=await getAllEventSettings(); const k=sessionKeyFor(v.date); return k?listSessionRegistrations(k):listRegistrations(); }),
     /**
      * Public opt-out. No login, because the link is clicked from a mail client.
      * The signed token proves the request came from an email we sent, so one
@@ -303,6 +312,7 @@ export const appRouter = router({
           return { ok: false as const, reason: "invalid" as const };
         }
         const row = await unsubscribeByEmail(input.email);
+        await unsubscribeSessions(input.email);
         syncInBackground(input.email);
         return {
           ok: true as const,
