@@ -234,7 +234,9 @@ export async function isUnsubscribed(email: string): Promise<boolean> {
     .from(registrations)
     .where(eq(registrations.email, email.trim().toLowerCase()))
     .limit(1);
-  return Boolean(rows[0]?.unsubscribedAt);
+  if (rows[0]?.unsubscribedAt) return true;
+  const { isSessionUnsubscribed } = await import('./sessions');
+  return isSessionUnsubscribed(email);
 }
 /**
  * Marks an address as having actually attended the live session. This is what
