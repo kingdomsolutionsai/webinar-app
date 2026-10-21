@@ -301,6 +301,20 @@ export const appRouter = router({
       }),
     list: adminProcedure.query(() => listRegistrations()),
     listCurrent: adminProcedure.query(async () => { const v=await getAllEventSettings(); const k=sessionKeyFor(v.date); return k?listSessionRegistrations(k):listRegistrations(); }),
+    markCurrentAttended: adminProcedure.input(z.object({email:z.string().email(),attended:z.boolean()})).mutation(async ({input,ctx})=>{
+      const stored=await getAllEventSettings();const key=sessionKeyFor(stored.date);
+      if(!key)return {ok:false as const,error:"No future session configured"};
+      const {row,alreadyAttended}=await setSessionAttendance(key,input.email,input.attended);
+      if(!row)return {ok:false as const,error:"Not registered for this session"};
+      if(input.attended&&!alreadyAttended&&!row.unsubscribedAt&&!await isUnsubscribed(row.email)){
+        const baseUrl=resolveEmailBaseUrl(stored[PUBLIC_URL_KEY],resolveBaseUrl(ctx.req));
+        await sendAttendanceRewardEmail({firstName:row.firstName,lastName:row.lastName,email:row.email,
+          baseUrl,logoUrl:baseUrl?`${baseUrl}${LION_MARK_URL}`:undefined,
+          unsubscribeUrl:unsubscribeUrl(baseUrl,row.email),
+          trackedUrls:{checklist:trackedDownloadUrl(baseUrl,"checklist",row.email)}});
+      }
+      return {ok:true as const};
+    }),
     /**
      * Public opt-out. No login, because the link is clicked from a mail client.
      * The signed token proves the request came from an email we sent, so one
