@@ -70,8 +70,8 @@ export function buildConfirmEmail(input: {
 }) {
   const name = escapeHtml(input.firstName.trim() || "friend");
   const when = input.sessionWhen?.trim();
-  const ask = input.sessionOnly && when
-    ? `Please confirm your email to save your seat for ${when}. Your private Zoom details will arrive after confirmation.`
+  const ask = input.sessionOnly
+    ? `Please confirm your email to save your seat${when ? ` for ${when}` : ""}. Your private Zoom details will arrive after confirmation.`
     : when
     ? `Please confirm this is your email address so I can save your seat for ${when}. One click and your Zoom link and Part One of the book are sent straight to this inbox.`
     : `Please confirm this is your email address so I know Part One of the book is going somewhere real. Nothing else needs to happen. One click and the file is sent straight to this inbox.`;
@@ -100,7 +100,7 @@ export function buildConfirmEmail(input: {
   <tr><td style="height:3px;background-color:${C.gold};line-height:3px;font-size:0;">&nbsp;</td></tr>
   <!-- Greeting -->
   <tr><td style="padding:38px 36px 0;">
-    <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">One click, ${name}, and it's on its way.</h1>
+    <h1 style="margin:0;font-family:${DISPLAY};font-size:26px;line-height:1.22;font-weight:700;color:${C.navy};">${input.sessionOnly ? `Confirm your seat, ${name}.` : `One click, ${name}, and it's on its way.`}</h1>
     <div style="width:52px;height:3px;background-color:${C.gold};margin:18px 0 0;"></div>
     <p style="margin:22px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
       ${escapeHtml(ask)}
@@ -110,7 +110,7 @@ export function buildConfirmEmail(input: {
   <tr><td style="padding:30px 36px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${C.gold};background-color:${C.goldTint};">
       <tr><td style="padding:26px 28px;text-align:center;">
-        <p style="margin:0 0 18px;font-family:${DISPLAY};font-size:18px;line-height:1.3;font-weight:700;color:${C.navy};">${escapeHtml(SAMPLE_CHAPTER.title)}</p>
+        <p style="margin:0 0 18px;font-family:${DISPLAY};font-size:18px;line-height:1.3;font-weight:700;color:${C.navy};">${input.sessionOnly ? "What Entrepreneurs Need to Know — How to Build in the Right Order" : escapeHtml(SAMPLE_CHAPTER.title)}</p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
           <tr><td style="background-color:${C.ink};">
             <a href="${input.confirmUrl}" style="display:inline-block;padding:14px 30px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${C.gold};text-decoration:none;">Confirm my email</a>
@@ -141,7 +141,7 @@ export function buildConfirmEmail(input: {
 </body>
 </html>`;
   const text = [
-    `One click, ${input.firstName.trim() || "friend"}, and it's on its way.`,
+    input.sessionOnly ? `Confirm your seat, ${input.firstName.trim() || "friend"}.` : `One click, ${input.firstName.trim() || "friend"}, and it's on its way.`,
     ``,
     ask,
     ``,
