@@ -255,7 +255,7 @@ export const appRouter = router({
         if (input.sessionKey && sessionKeyFor(stored.date) !== input.sessionKey) return {ok:false as const,reason:"session_changed" as const};
         if (!alreadyConfirmed) {
           // Joining the Nurture list in Brevo is what starts the day 2/7/14 letters.
-          if (!input.sessionKey) syncInBackground(row.email);
+          syncInBackground(row.email);
           try {
             if (await isUnsubscribed(row.email)) {
               if (!input.sessionKey) await setRegistrationEmailStatus(row.email, "skipped", "Recipient has unsubscribed");
