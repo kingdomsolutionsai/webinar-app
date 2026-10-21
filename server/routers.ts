@@ -241,7 +241,7 @@ export const appRouter = router({
      * produce a duplicate delivery.
      */
     confirm: publicProcedure
-      .input(z.object({ email: z.string().email(), token: z.string().min(8) }))
+      .input(z.object({ email: z.string().email(), token: z.string().min(8), sessionKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }))
       .mutation(async ({ input, ctx }) => {
         if (!verifyConfirm(input.email, input.token, input.sessionKey)) {
           return { ok: false as const, reason: "invalid" as const };
