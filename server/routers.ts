@@ -194,7 +194,7 @@ export const appRouter = router({
         const baseUrl = linkBaseUrl;
         // Never mail someone who has opted out, even if they submit again.
         if (await isUnsubscribed(input.email)) {
-          await setRegistrationEmailStatus(input.email, "skipped", "Recipient has unsubscribed");
+          if (!sessionKey) await setRegistrationEmailStatus(input.email, "skipped", "Recipient has unsubscribed");
         } else {
           const result = await sendConfirmEmail({
             firstName: row?.firstName ?? input.firstName,
@@ -202,6 +202,7 @@ export const appRouter = router({
             email: input.email,
             confirmUrl: confirmUrl(baseUrl, input.email, sessionKey ?? undefined),
             logoUrl: baseUrl ? `${baseUrl}${LION_MARK_URL}` : undefined,
+            sessionOnly: Boolean(sessionKey),
             sessionWhen: (() => {
               const session = upcomingSession(storedForLinks);
               return session ? seatBlock(session).when : undefined;
@@ -257,7 +258,7 @@ export const appRouter = router({
           if (!input.sessionKey) syncInBackground(row.email);
           try {
             if (await isUnsubscribed(row.email)) {
-              await setRegistrationEmailStatus(row.email, "skipped", "Recipient has unsubscribed");
+              if (!input.sessionKey) await setRegistrationEmailStatus(row.email, "skipped", "Recipient has unsubscribed");
             } else {
               const result = await sendSignupEmails({
                 firstName: row.firstName,
