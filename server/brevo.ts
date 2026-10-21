@@ -1,4 +1,5 @@
 import { MAIL_FROM, MAIL_OWNER, LION_MARK_URL, isPlaceholder } from "../shared/event";
+import { sessionKeyFor, listSessionRegistrations } from "./sessions";
 import { signDownload, trackedDownloadUrl } from "./downloads";
 import { sendEmail } from "./email";
 import {
@@ -268,6 +269,17 @@ export async function syncRegistrantToBrevo(email: string, ioIn?: BrevoIO) {
     const io = ioIn ?? (await defaultIO());
     if (!io.apiKey) return { ok: false as const, skipped: "no api key" };
     const settings = await io.getSettings();
+    const sessionKey = sessionKeyFor(settings.date);
+    const currentList = sessionKey ? Number(settings[`brevoConfirmed_${sessionKey}`] ?? 0) : 0;
+    if (sessionKey && currentList) {
+      const { listSessionRegistrations } = await import("./sessions");
+      const row = (await listSessionRegistrations(sessionKey)).find(r=>r.email.toLowerCase()===email.trim().toLowerCase());
+      if (!row || !row.confirmedAt || row.unsubscribedAt) return {ok:false as const,skipped:"not a confirmed current-event registrant"};
+      const legacyUnsubscribed = await io.listRegistrations();
+      if (legacyUnsubscribed.some(r=>r.email.toLowerCase()===email.trim().toLowerCase() && r.unsubscribedAt)) return {ok:false as const,skipped:"opted out"};
+      const result=await api(io,"POST","/contacts",{email:row.email.toLowerCase(),attributes:{FIRSTNAME:row.firstName,LASTNAME:row.lastName},listIds:[currentList],updateEnabled:true});
+      return result.ok?{ok:true as const}:{ok:false as const,error:result.error};
+    }
     const listAll = Number(settings[BREVO_KEYS.listAll]);
     const listNurture = Number(settings[BREVO_KEYS.listNurture]);
     // Until "Set up in Brevo" has run once there are no lists to add people to.
@@ -625,6 +637,7 @@ export async function setupBrevo(options: { requestOrigin?: string; io?: BrevoIO
     await ensureAttributes(io);
 
     // 2. Everyone who has registered so far.
+    const sessionKey = sessionKeyFor(settings.date);
     const [rows, downloads] = await Promise.all([io.listRegistrations(), io.listDownloads()]);
     const opened = openedSet(downloads);
     for (const row of rows) {
@@ -654,10 +667,23 @@ export async function setupBrevo(options: { requestOrigin?: string; io?: BrevoIO
       updateEnabled: true,
     } as never);
 
+    // A new webinar has a new opt-in audience; never copy October confirmations into it.
+    let eventListId = listNurture;
+    if (sessionKey) {
+      eventListId = await findOrCreateList(io, `Webinar: ${sessionKey} confirmed`, folderId);
+      await io.setSetting(`brevoConfirmed_${sessionKey}`, String(eventListId));
+      const current = await listSessionRegistrations(sessionKey);
+      for (const row of current) {
+        if (!row.confirmedAt || row.unsubscribedAt || rows.some(old=>old.email===row.email && old.unsubscribedAt)) continue;
+        const upsert = await api(io,"POST","/contacts",{email:row.email,attributes:{FIRSTNAME:row.firstName,LASTNAME:row.lastName},listIds:[eventListId],updateEnabled:true});
+        if (!upsert.ok) report.warnings.push(`Current-session contact sync failed: ${upsert.error}`);
+      }
+    }
+
     // 3. Letters one to three as templates, for the automation.
     const storedTemplates = safeJson<Record<string, number>>(settings[BREVO_KEYS.templates]) ?? {};
     const templateIds: Record<string, number> = {};
-    for (const template of buildNurtureTemplates(baseUrl, settings)) {
+    for (const template of sessionKey ? [] : buildNurtureTemplates(baseUrl, settings)) {
       const id = await upsertTemplate(io, storedTemplates[String(template.step)], template);
       templateIds[String(template.step)] = id;
       report.templates.push({ step: template.step, id, name: template.name });
@@ -666,7 +692,8 @@ export async function setupBrevo(options: { requestOrigin?: string; io?: BrevoIO
 
     // 4. The session-anchored emails.
     const start = parseEventStart(settings.date, settings.time);
-    const stored = safeJson<StoredCampaigns>(settings[BREVO_KEYS.campaigns]);
+    const campaignKey = sessionKey ? `brevoCampaigns_${sessionKey}` : BREVO_KEYS.campaigns;
+    const stored = safeJson<StoredCampaigns>(settings[campaignKey]);
     if (!start) {
       report.warnings.push(
         isPlaceholder(settings.date)
@@ -690,7 +717,7 @@ export async function setupBrevo(options: { requestOrigin?: string; io?: BrevoIO
       const items: StoredCampaigns["items"] = [];
       const dateTag = start.toISOString().slice(0, 10);
       const soonest = io.now().getTime() + 5 * 60 * 1000;
-      for (const campaign of planEventCampaigns({ baseUrl, settings, start })) {
+      for (const campaign of (sessionKey ? planEventCampaigns({ baseUrl, settings, start }).filter(c=>c.key.startsWith("reminder")) : planEventCampaigns({ baseUrl, settings, start }))) {
         const base = {
           key: campaign.key,
           label: campaign.label,
@@ -705,7 +732,7 @@ export async function setupBrevo(options: { requestOrigin?: string; io?: BrevoIO
           report.campaigns.push({ ...base, status: "skipped", note: "That time has already passed" });
           continue;
         }
-        const listId = campaign.list === "all" ? listAll : listNurture;
+        const listId = sessionKey ? eventListId : campaign.list === "all" ? listAll : listNurture;
         const created = await createScheduledCampaign(io, campaign, listId, dateTag);
         items.push({ key: campaign.key, id: created.id });
         report.campaigns.push({ ...base, id: created.id, status: created.status });
@@ -713,7 +740,7 @@ export async function setupBrevo(options: { requestOrigin?: string; io?: BrevoIO
       // Keep ids of earlier campaigns for this same session that already went out.
       const kept = stored && stored.eventStart === start.toISOString() ? stored.items.filter(i => !items.some(n => n.key === i.key)) : [];
       await io.setSetting(
-        BREVO_KEYS.campaigns,
+        campaignKey,
         JSON.stringify({ eventStart: start.toISOString(), items: [...kept, ...items] }),
       );
       const notQueued = report.campaigns.filter(c => c.id && c.status !== "queued");
