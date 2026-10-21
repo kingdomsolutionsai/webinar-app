@@ -66,10 +66,13 @@ export function buildConfirmEmail(input: {
   logoUrl?: string;
   /** "Tuesday, October 20, 2026 at 11:00 AM ET" while a session is upcoming. */
   sessionWhen?: string;
+  sessionOnly?: boolean;
 }) {
   const name = escapeHtml(input.firstName.trim() || "friend");
   const when = input.sessionWhen?.trim();
-  const ask = when
+  const ask = input.sessionOnly && when
+    ? `Please confirm your email to save your seat for ${when}. Your private Zoom details will arrive after confirmation.`
+    : when
     ? `Please confirm this is your email address so I can save your seat for ${when}. One click and your Zoom link and Part One of the book are sent straight to this inbox.`
     : `Please confirm this is your email address so I know Part One of the book is going somewhere real. Nothing else needs to happen. One click and the file is sent straight to this inbox.`;
   const html = `<!doctype html>
@@ -164,12 +167,14 @@ export async function sendConfirmEmail(input: {
   confirmUrl: string;
   logoUrl?: string;
   sessionWhen?: string;
+  sessionOnly?: boolean;
 }): Promise<EmailResult> {
   const message = buildConfirmEmail({
     firstName: input.firstName,
     confirmUrl: input.confirmUrl,
     logoUrl: input.logoUrl,
     sessionWhen: input.sessionWhen,
+    sessionOnly: input.sessionOnly,
   });
   return sendEmail({
     to: { email: input.email, name: `${input.firstName} ${input.lastName}`.trim() },
@@ -198,6 +203,7 @@ export function buildRegistrantEmail(input: {
    * link) while a session is upcoming. Absent means Part One only.
    */
   seat?: { when: string; html: string; text: string[] };
+  sessionOnly?: boolean;
 }) {
   const { firstName, baseUrl, seat } = input;
   const chapterUrl = input.trackedUrls?.chapter ?? absolute(baseUrl, SAMPLE_CHAPTER.url);
@@ -634,8 +640,9 @@ export async function sendSignupEmails(input: {
   unsubscribeUrl?: string;
   trackedUrls?: { chapter: string; checklist?: string };
   seat?: { when: string; html: string; text: string[] };
+  sessionOnly?: boolean;
 }): Promise<EmailResult> {
-  const registrant = buildRegistrantEmail({
+  const registrant = input.sessionOnly ? null : buildRegistrantEmail({
     firstName: input.firstName,
     baseUrl: input.baseUrl,
     logoUrl: input.logoUrl,
@@ -643,11 +650,12 @@ export async function sendSignupEmails(input: {
     trackedUrls: input.trackedUrls,
     seat: input.seat,
   });
+  const content = registrant ?? { subject: `Your seat is confirmed: ${input.seat?.when ?? "the next webinar"}`, html: `<div style="font:17px/1.7 Georgia,serif;padding:28px"><h2>What Entrepreneurs Need to Know</h2><h3>How to Build in the Right Order</h3><p>Welcome, ${input.firstName.replace(/[<>&"]/g, "")}. Your seat is confirmed.</p>${input.seat?.html ?? "<p>Watch your inbox for event details.</p>"}<p>We look forward to seeing you live.</p><p>Tabitha Rector<br>Kingdom Solutions AI™</p><p><a href="${input.unsubscribeUrl ?? "#"}">Unsubscribe</a></p></div>`, text: [`Your seat is confirmed for ${input.seat?.when ?? "the next webinar"}.`, ...(input.seat?.text ?? [])].join("\n") };
   const result = await sendEmail({
     to: { email: input.email, name: `${input.firstName} ${input.lastName}`.trim() },
-    subject: registrant.subject,
-    html: registrant.html,
-    text: registrant.text,
+    subject: content.subject,
+    html: content.html,
+    text: Array.isArray(content.text) ? content.text.join("\n") : content.text,
     tags: ["resource-delivery"],
     // Lets Gmail and Outlook offer their own one-click unsubscribe control.
     unsubscribeUrl: input.unsubscribeUrl,
