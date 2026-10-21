@@ -274,9 +274,16 @@ export async function syncRegistrantToBrevo(email: string, ioIn?: BrevoIO) {
     if (sessionKey && currentList) {
       const { listSessionRegistrations } = await import("./sessions");
       const row = (await listSessionRegistrations(sessionKey)).find(r=>r.email.toLowerCase()===email.trim().toLowerCase());
-      if (!row || !row.confirmedAt || row.unsubscribedAt) return {ok:false as const,skipped:"not a confirmed current-event registrant"};
+      if (!row || !row.confirmedAt) return {ok:false as const,skipped:"not a confirmed current-event registrant"};
+      if (row.unsubscribedAt) {
+        await api(io,"POST","/contacts",{email:row.email.toLowerCase(),emailBlacklisted:true,updateEnabled:true});
+        return {ok:false as const,skipped:"unsubscribed"};
+      }
       const legacyUnsubscribed = await io.listRegistrations();
-      if (legacyUnsubscribed.some(r=>r.email.toLowerCase()===email.trim().toLowerCase() && r.unsubscribedAt)) return {ok:false as const,skipped:"opted out"};
+      if (legacyUnsubscribed.some(r=>r.email.toLowerCase()===email.trim().toLowerCase() && r.unsubscribedAt)) {
+        await api(io,"POST","/contacts",{email:row.email.toLowerCase(),emailBlacklisted:true,updateEnabled:true});
+        return {ok:false as const,skipped:"opted out"};
+      }
       const result=await api(io,"POST","/contacts",{email:row.email.toLowerCase(),attributes:{FIRSTNAME:row.firstName,LASTNAME:row.lastName},listIds:[currentList],updateEnabled:true});
       return result.ok?{ok:true as const}:{ok:false as const,error:result.error};
     }
@@ -690,7 +697,7 @@ export async function setupBrevo(options: { requestOrigin?: string; io?: BrevoIO
       templateIds[String(template.step)] = id;
       report.templates.push({ step: template.step, id, name: template.name });
     }
-    await io.setSetting(BREVO_KEYS.templates, JSON.stringify(templateIds));
+    if (!sessionKey) await io.setSetting(BREVO_KEYS.templates, JSON.stringify(templateIds));
 
     // 4. The session-anchored emails.
     const start = parseEventStart(settings.date, settings.time);
