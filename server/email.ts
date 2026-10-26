@@ -71,7 +71,7 @@ export function buildConfirmEmail(input: {
   const name = escapeHtml(input.firstName.trim() || "friend");
   const when = input.sessionWhen?.trim();
   const ask = input.sessionOnly
-    ? `Please confirm your email to save your seat${when ? ` for ${when}` : ""}. Your private Zoom details will arrive after confirmation.`
+    ? `Please confirm your email to save your seat${when ? ` for ${when}` : ""}. Your Zoom details and Chapter One gift will arrive after confirmation.`
     : when
     ? `Please confirm this is your email address so I can save your seat for ${when}. One click and your Zoom link and Part One of the book are sent straight to this inbox.`
     : `Please confirm this is your email address so I know Part One of the book is going somewhere real. Nothing else needs to happen. One click and the file is sent straight to this inbox.`;
@@ -110,7 +110,7 @@ export function buildConfirmEmail(input: {
   <tr><td style="padding:30px 36px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${C.gold};background-color:${C.goldTint};">
       <tr><td style="padding:26px 28px;text-align:center;">
-        <p style="margin:0 0 18px;font-family:${DISPLAY};font-size:18px;line-height:1.3;font-weight:700;color:${C.navy};">${input.sessionOnly ? "What Entrepreneurs Need to Know — How to Build in the Right Order" : escapeHtml(SAMPLE_CHAPTER.title)}</p>
+        <p style="margin:0 0 18px;font-family:${DISPLAY};font-size:18px;line-height:1.3;font-weight:700;color:${C.navy};">${input.sessionOnly ? "Finding the Gap — A Faith-Rooted Business Workshop" : escapeHtml(SAMPLE_CHAPTER.title)}</p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
           <tr><td style="background-color:${C.ink};">
             <a href="${input.confirmUrl}" style="display:inline-block;padding:14px 30px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${C.gold};text-decoration:none;">Confirm my email</a>
@@ -238,7 +238,7 @@ export function buildRegistrantEmail(input: {
     ${
       seat
         ? `<p style="margin:22px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
-      You're confirmed for <em>What Entrepreneurs Need to Know</em>. Save this email, because everything you need to join is right here.
+      You're confirmed for <em>${input.sessionOnly ? "Finding the Gap" : "What Entrepreneurs Need to Know"}</em>. Save this email: your Zoom details and your Chapter One gift are both here.
     </p>
   </td></tr>
   ${seat.html}
@@ -283,7 +283,7 @@ export function buildRegistrantEmail(input: {
         <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#9A7B12;">Ready now</div>
         <p style="margin:11px 0 0;font-family:${DISPLAY};font-size:19px;line-height:1.3;font-weight:700;color:${C.navy};">${escapeHtml(SAMPLE_CHAPTER.title)}</p>
         <p style="margin:7px 0 0;font-family:${SANS};font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:${C.muted};">${SAMPLE_CHAPTER.pages} pages · complete and unabridged</p>
-        <p style="margin:13px 0 0;font-family:${SERIF};font-size:16px;line-height:1.62;color:${C.body};">Six chapters and the Lincoln account: the eight systems every business runs on, and why one weak system limits all the others.</p>
+        <p style="margin:13px 0 0;font-family:${SERIF};font-size:16px;line-height:1.62;color:${C.body};">A starting point for thinking about the business you are stewarding. At our live session, we will focus on identifying your first business gap.</p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
           <tr><td style="background-color:${C.ink};">
             <a href="${chapterUrl}" style="display:inline-block;padding:14px 26px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${C.gold};text-decoration:none;">Download Part One</a>
@@ -372,7 +372,7 @@ export function buildRegistrantEmail(input: {
       : []),
   ].join("\n");
   return {
-    subject: seat ? `You're registered: ${seat.when}. Your Zoom link is inside` : "Part One is inside",
+    subject: seat ? `You're registered: ${seat.when}. Your Zoom link and gift are inside` : "Part One is inside",
     html,
     text,
   };
@@ -642,15 +642,16 @@ export async function sendSignupEmails(input: {
   seat?: { when: string; html: string; text: string[] };
   sessionOnly?: boolean;
 }): Promise<EmailResult> {
-  const registrant = input.sessionOnly ? null : buildRegistrantEmail({
+  const registrant = buildRegistrantEmail({
     firstName: input.firstName,
     baseUrl: input.baseUrl,
     logoUrl: input.logoUrl,
     unsubscribeUrl: input.unsubscribeUrl,
     trackedUrls: input.trackedUrls,
     seat: input.seat,
+    sessionOnly: input.sessionOnly,
   });
-  const content = registrant ?? { subject: `Your seat is confirmed: ${input.seat?.when ?? "the next webinar"}`, html: `<div style="font:17px/1.7 Georgia,serif;padding:28px"><h2>What Entrepreneurs Need to Know</h2><h3>How to Build in the Right Order</h3><p>Welcome, ${input.firstName.replace(/[<>&"]/g, "")}. Your seat is confirmed.</p>${input.seat?.html ?? "<p>Watch your inbox for event details.</p>"}<p>We look forward to seeing you live.</p><p>Tabitha Rector<br>Kingdom Solutions AI™</p><p><a href="${input.unsubscribeUrl ?? "#"}">Unsubscribe</a></p></div>`, text: [`Your seat is confirmed for ${input.seat?.when ?? "the next webinar"}.`, ...(input.seat?.text ?? [])].join("\n") };
+  const content = registrant;
   const result = await sendEmail({
     to: { email: input.email, name: `${input.firstName} ${input.lastName}`.trim() },
     subject: content.subject,
