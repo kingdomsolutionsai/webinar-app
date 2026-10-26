@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildRegistrantEmail } from "./email";
-import { planEventCampaigns } from "./brevo";
+import { planEventCampaigns, syncRegistrantToBrevo, type BrevoIO } from "./brevo";
 import { buildFifteenBeforeReminder } from "./reminders";
 
 const start = new Date("2026-11-17T16:00:00.000Z"); // 11 AM EST
@@ -57,4 +57,18 @@ describe("Finding the Gap funnel", () => {
     expect(last!.html).toContain("https://us06web.zoom.us/j/1234567890");
     expect(campaigns.some(campaign => campaign.key === "reminder-ten")).toBe(false);
   });
+  it("never syncs a new session contact to the legacy audience when its list is missing", async () => {
+    const io: BrevoIO = {
+      apiKey: "test-key",
+      fetcher: (async () => { throw new Error("Must not contact Brevo"); }) as typeof fetch,
+      getSettings: async () => ({ date: "Tuesday, November 17, 2026" }),
+      setSetting: async () => { throw new Error("Must not write settings"); },
+      listRegistrations: async () => { throw new Error("Must not read legacy registrations"); },
+      listDownloads: async () => { throw new Error("Must not read legacy downloads"); },
+      now: () => new Date("2026-10-26T16:00:00.000Z"),
+    };
+    const result = await syncRegistrantToBrevo("example@example.com", io);
+    expect(result).toEqual({ ok: false, skipped: "current event list not configured" });
+  });
+
 });
