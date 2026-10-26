@@ -228,7 +228,7 @@ export function buildRegistrantEmail(input: {
         : ""
     }
     <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:${C.gold};">Kingdom Solutions AI&trade;</div>
-    <div style="font-family:${SERIF};font-size:14px;font-style:italic;color:#FFFFFF;opacity:0.72;margin-top:7px;">Leadership, clarity, and sustainable systems</div>
+    <div style="font-family:${SERIF};font-size:14px;font-style:italic;color:#FFFFFF;opacity:0.72;margin-top:7px;">${input.sessionOnly ? "By Revived Spirit · Faith, clarity, and stewardship" : "Leadership, clarity, and sustainable systems"}</div>
   </td></tr>
   <tr><td style="height:3px;background-color:${C.gold};line-height:3px;font-size:0;">&nbsp;</td></tr>
   <!-- Greeting -->
@@ -238,7 +238,7 @@ export function buildRegistrantEmail(input: {
     ${
       seat
         ? `<p style="margin:22px 0 0;font-family:${SERIF};font-size:17px;line-height:1.65;color:${C.body};">
-      You're confirmed for <em>${input.sessionOnly ? "Finding the Gap" : "What Entrepreneurs Need to Know"}</em>. Save this email: your Zoom details and your Chapter One gift are both here.
+      You're confirmed for <em>${input.sessionOnly ? "Finding the Gap" : "What Entrepreneurs Need to Know"}</em>. Save this email: your Zoom details and your Chapter One gift are both here. You are dearly loved by God, and your business progress does not determine your worth.
     </p>
   </td></tr>
   ${seat.html}
@@ -273,7 +273,7 @@ export function buildRegistrantEmail(input: {
       </td></tr>
     </table>
     <p style="margin:16px 0 0;font-family:${SERIF};font-size:16px;line-height:1.6;color:${C.muted};">
-      At the live session, I will hand you a page built for exactly this sentence: the First-Sale Readiness Checklist. It is yours the moment you show up.
+      At the live session, I will hand you a page built for exactly this sentence: the First-Sale Readiness Checklist. I'll send it after the session to those who attend live.
     </p>
   </td></tr>
   <!-- The resource -->
@@ -334,7 +334,7 @@ export function buildRegistrantEmail(input: {
       ? [
           `Your seat is saved, ${firstName.trim() || "friend"}.`,
           ``,
-          `You're confirmed for What Entrepreneurs Need to Know. Save this email, because everything you need to join is right here.`,
+          `You're confirmed for ${input.sessionOnly ? "Finding the Gap" : "What Entrepreneurs Need to Know"}. Save this email: your Zoom details and Chapter One gift are inside. Your worth is not determined by your sales.`,
           ``,
           ...seat.text,
           ``,
@@ -355,7 +355,7 @@ export function buildRegistrantEmail(input: {
     ``,
     `${EXERCISE_PROMPT.reframeLabel}: ${EXERCISE_PROMPT.reframe}`,
     ``,
-    `At the live session, I will hand you a page built for exactly this sentence: the First-Sale Readiness Checklist. It is yours the moment you show up.`,
+    `At the live session, I will hand you a page built for exactly this sentence: the First-Sale Readiness Checklist. I'll send it after the session to those who attend live.`,
     ``,
     `YOUR RESOURCE`,
     `${SAMPLE_CHAPTER.title}: ${chapterUrl}`,
