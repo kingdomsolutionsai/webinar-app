@@ -3,8 +3,8 @@ import { formatEastern, formatEasternClock, parseDurationMinutes, parseEventStar
 import { C, DISPLAY, SANS, SERIF, buttonRow, escapeHtml, paragraph, pullQuote, shell } from "./sequence";
 
 /**
- * The three pre-session reminders: one week before, the day before, and one
- * hour before.
+ * The pre-session reminders: one week before, the day before, one hour before,
+ * and fifteen minutes before.
  *
  * Both carry the Zoom link, the meeting ID and the passcode, so someone whose
  * link misbehaves can still get in by typing the numbers. Nothing here is
@@ -128,7 +128,7 @@ export function seatBlock(session: SessionDetails): { when: string; html: string
       html: [
         sessionCard(ctx),
         calendarRow,
-        paragraph(`Your Zoom link will arrive by email one week before, the day before, and one hour before we start.`),
+        paragraph(`Your Zoom link will arrive after confirmation, then again the day before, one hour before, and fifteen minutes before we start.`),
       ].join(""),
       text: [
         `What Entrepreneurs Need to Know`,
@@ -137,7 +137,7 @@ export function seatBlock(session: SessionDetails): { when: string; html: string
         ``,
         `Add it to your Google Calendar: ${calendarUrl}`,
         ``,
-        `Your Zoom link will arrive by email one week before, the day before, and one hour before we start.`,
+        `Your Zoom link will arrive after confirmation, then again the day before, one hour before, and fifteen minutes before we start.`,
       ],
     };
   }
@@ -300,6 +300,41 @@ export function buildHourBeforeReminder(ctx: ReminderContext) {
     html: shell({
       preheader: `We go live at ${clock}. Your link is inside.`,
       heading: "We begin in one hour.",
+      bodyHtml: body,
+      baseUrl: ctx.baseUrl,
+      logoUrl: ctx.logoUrl,
+      unsubscribeUrl: ctx.unsubscribeUrl,
+      footerNote: FOOTER,
+    }),
+    text,
+  };
+}
+
+/** Final reminder: fifteen minutes before the session. */
+export function buildFifteenBeforeReminder(ctx: ReminderContext) {
+  const clock = formatEasternClock(ctx.start);
+  const body = [
+    paragraph(`${escapeHtml(ctx.firstName)}, we begin in fifteen minutes. I am looking forward to welcoming you. You do not need to have everything figured out before you come.`),
+    buttonRow("Join the webinar now", ctx.joinUrl),
+    zoomDetails(ctx),
+    paragraph("If the link gives you trouble, open Zoom and enter the meeting ID and passcode above. Bring a notebook and a little breathing room."),
+  ].join("");
+
+  const text = [
+    `${ctx.firstName}, we begin in fifteen minutes at ${clock}. You do not need to have everything figured out before you come.`,
+    "",
+    `Join the webinar now: ${ctx.joinUrl}`,
+    ...zoomDetailsText(ctx),
+    "",
+    "Bring a notebook. I look forward to seeing you.",
+    ...signOffText(ctx),
+  ].join("\n");
+
+  return {
+    subject: "We begin in 15 minutes — your Zoom link is here",
+    html: shell({
+      preheader: "Come as you are. Join the live session in a few minutes.",
+      heading: "Your place is ready.",
       bodyHtml: body,
       baseUrl: ctx.baseUrl,
       logoUrl: ctx.logoUrl,
