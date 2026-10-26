@@ -113,9 +113,9 @@ export default function Confirm() {
         <div className="mt-7 h-[3px] w-14 bg-gold" />
         <p className="mt-7 font-serif text-[17px] leading-relaxed text-ink/80">
           {isNovember17
-            ? "Your seat for Tuesday, November 17 is confirmed. Your private Zoom details are being sent to your inbox. Save that email so you can join us live."
+            ? "Your seat for Tuesday, November 17 is confirmed. Your private Zoom details and Chapter One gift are being sent to your inbox. Save that email so you can join us live."
             : currentSession
-              ? "Your Zoom details are being sent to your inbox. Save that message so you can join us live."
+              ? "Your Zoom details and Chapter One gift are being sent to your inbox. Save that message so you can join us live."
               : "Your resource is on its way to your inbox. If it has not arrived in a few minutes, please check your spam folder."}
         </p>
         {/* Legacy resource is for the original event only. */}
@@ -170,9 +170,9 @@ export default function Confirm() {
                 Come ready to discover your next step.
               </p>
               <p className="mt-3 font-serif text-[16px] leading-relaxed text-ink/75">
-                During our webinar, we'll explore the eight essential business systems,
-                identify where your business needs attention, and choose one practical
-                action for the next 30 days. Bring a notebook and your questions.
+                During Finding the Gap, we'll begin with the Direction Gap, recognize the other
+                three business gaps, and choose one practical next action.
+                Come with your questions and a notebook.
               </p>
             </div>
           </>
