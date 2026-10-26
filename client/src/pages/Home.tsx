@@ -18,8 +18,8 @@ function buildChatContext(event: PublicEvent): string {
     scheduled
       ? `Next live workshop: ${event.date} at ${isPlaceholder(event.time) ? "time to be announced" : event.time + " Eastern Time"}. ${isPlaceholder(event.duration) ? "" : "Duration: " + event.duration + "."} Registration is on this page.`
       : "The next live date will be announced on this page.",
-    "Core promise: learn how the eight business systems fit together, identify the leading gap, and choose one specific 30-day action. Start with the right foundation before adding more tools.",
-    "What participants do: assess their own business, identify the first fix, and learn where AI supports processes while people retain authority.",
+    "Core promise: begin with the Direction gap, recognize the Offer, Audience, and Structure gaps, identify the leading gap in your own business, and choose one specific next action. The eight business systems are supporting context, not the main teaching.",
+    "What participants do: reflect on the places their effort is not producing results, test their likely starting gap, and choose one practical action. AI supports processes while people retain authority.",
     "Reason to attend live: a guided starting-point exercise, live Q&A, and a First-Sale Readiness Checklist thank-you gift for people who attend.",
     "Registration: first name, last name, email address. Email confirmation is required. Private Zoom details are delivered only after confirmation. Previous webinars do not automatically register someone for this one.",
     "This is a business-building webinar, NOT a book promotion. The book is a separate resource; do not promise a free book or chapter when someone registers for the webinar.",
@@ -45,18 +45,18 @@ function EventFact({ label, value }: { label: string; value: string }) {
 const TAKEAWAYS = [
   {
     number: "01",
-    title: "Understand the eight systems",
-    text: "See how the essential parts of your business work together, and why order matters.",
+    title: "Recognize a Direction gap",
+    text: "See why experience and effort can still leave you uncertain about what to build, for whom, and why.",
   },
   {
     number: "02",
-    title: "Find your leading gap",
-    text: "Identify what needs attention first instead of adding more tactics or tools.",
+    title: "See the other three gaps",
+    text: "Recognize signs of an Offer, Audience, or Structure gap and how they can compound one another.",
   },
   {
     number: "03",
-    title: "Choose one 30-day action",
-    text: "Leave with a specific next move you can take with confidence.",
+    title: "Choose your next right step",
+    text: "Identify your likely starting point and one practical action to take after the session.",
   },
 ];
 
@@ -110,13 +110,14 @@ export default function Home() {
                 What Entrepreneurs <span className="text-gold">Need to Know</span>
               </h1>
               <p className="mt-5 max-w-xl font-display text-2xl font-medium leading-snug text-white sm:text-[31px]">
-                How to Build in the Right Order
+                Find the Gap. Build in the Right Order.
               </p>
               <GoldRule className="mt-7" />
               <p className="mt-7 max-w-xl font-serif text-[19px] leading-[1.65] text-white/85">
-                Tired of building and building, only to wonder why your business or message isn't
-                landing? Learn how to identify the one business gap to address first, so you can
-                stop guessing and start building on a clearer foundation.
+                You have experience, ideas, and a desire to build something meaningful. Maybe you've
+                started already, but the results still do not match the work. Or maybe you cannot
+                decide where to begin. We will start with the Direction gap, then look at Offer,
+                Audience, and Structure so you can see what really needs attention first.
               </p>
               {!isWaitlist && !isLoading ? (
                 <div className="mt-8 grid gap-5 sm:grid-cols-2">
@@ -192,8 +193,9 @@ export default function Home() {
                 Stop adding more. Find what needs to come first.
               </h2>
               <p className="mt-4 font-serif text-lg leading-relaxed text-ink/70">
-                This is a guided working session, not a presentation about buying another tool.
-                Bring your experience, your questions, and a notebook.
+                If you are getting started or reassessing a business that is not landing the way
+                you hoped, this session will help you recognize what is unclear and what comes
+                first. Bring your experience, your questions, and a notebook.
               </p>
             </div>
             <div className="mt-10 grid gap-5 md:grid-cols-3">
@@ -216,9 +218,10 @@ export default function Home() {
                 <h2 className="font-display text-2xl font-bold text-ink">Why attend live?</h2>
               </div>
               <p className="mt-3 font-serif text-[17px] leading-relaxed text-ink/75">
-                Work through your starting-point exercise with me and bring your questions for
-                the live Q&A. Those who attend live also receive my First-Sale Readiness Checklist
-                as a thank-you.
+                Work through a live gap-identification exercise with me and bring your questions
+                for the Q&A. Those who attend live also receive my First-Sale Readiness Checklist
+                as a thank-you. If you need implementation support afterward, I will explain the
+                30-Day Business Fast Track™, starting soon.
               </p>
             </div>
             <Button
