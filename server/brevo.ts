@@ -271,6 +271,9 @@ export async function syncRegistrantToBrevo(email: string, ioIn?: BrevoIO) {
     const settings = await io.getSettings();
     const sessionKey = sessionKeyFor(settings.date);
     const currentList = sessionKey ? Number(settings[`brevoConfirmed_${sessionKey}`] ?? 0) : 0;
+    // A later session must never fall through into the legacy confirmed list.
+    // The owner must run Brevo setup to create the session-specific list first.
+    if (sessionKey && !currentList) return { ok: false as const, skipped: "current event list not configured" };
     if (sessionKey && currentList) {
       const { listSessionRegistrations } = await import("./sessions");
       const row = (await listSessionRegistrations(sessionKey)).find(r=>r.email.toLowerCase()===email.trim().toLowerCase());
