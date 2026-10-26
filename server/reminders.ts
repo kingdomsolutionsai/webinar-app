@@ -221,14 +221,14 @@ export function buildDayBeforeReminder(ctx: ReminderContext) {
   const calendarUrl = googleCalendarUrl(ctx);
   const body = [
     paragraph(
-      `${escapeHtml(ctx.firstName)}, tomorrow we walk the whole sequence together. Here is everything you need to get in, so you are not hunting for it in the morning.`,
+      `${escapeHtml(ctx.firstName)}, tomorrow we gather for Finding the Gap. If you've been working hard without the progress you hoped for, you are not alone. Come ready to identify one wise next step.`,
     ),
     sessionCard(ctx),
     buttonRow("Join on Zoom", ctx.joinUrl),
     zoomDetails(ctx),
     `<tr><td style="padding:14px 36px 0;"><p style="margin:0;font-family:${SANS};font-size:13px;"><a href="${escapeHtml(calendarUrl)}" style="color:${C.navy};text-decoration:underline;">Add it to your Google Calendar</a></p></td></tr>`,
     paragraph(
-      `Bring something to write with. There is one exercise, it takes about four minutes, and it is the part most people tell me they remember.`,
+      `Bring a notebook and your questions. You do not need to have everything figured out before we meet.`,
     ),
     paragraph(
       `Everyone who attends live receives the ${escapeHtml(READINESS_CHECKLIST.title)} afterward. It is my thank-you for showing up.`,
@@ -236,9 +236,9 @@ export function buildDayBeforeReminder(ctx: ReminderContext) {
   ].join("");
 
   const text = [
-    `${ctx.firstName}, tomorrow we walk the whole sequence together. Here is everything you need to get in.`,
+    `${ctx.firstName}, tomorrow we gather for Finding the Gap. You are not alone; come ready to identify one wise next step.`,
     ``,
-    `What Entrepreneurs Need to Know`,
+    `Finding the Gap`,
     formatEastern(ctx.start),
     `${ctx.durationMinutes} minutes, live on Zoom`,
     ``,
@@ -247,16 +247,16 @@ export function buildDayBeforeReminder(ctx: ReminderContext) {
     ``,
     `Add it to your Google Calendar: ${calendarUrl}`,
     ``,
-    `Bring something to write with. There is one exercise, it takes about four minutes, and it is the part most people tell me they remember.`,
+    `Bring a notebook and your questions. You do not need to have everything figured out before we meet.`,
     ``,
     `Everyone who attends live receives the ${READINESS_CHECKLIST.title} afterward. It is my thank-you for showing up.`,
     ...signOffText(ctx),
   ].join("\n");
 
   return {
-    subject: `Tomorrow at ${clock}: your Zoom link is inside`,
+    subject: `Tomorrow, let's find your gap — your ${clock} Zoom link`,
     html: shell({
-      preheader: "Everything you need to join tomorrow's live session.",
+      preheader: "Finding the Gap begins tomorrow. Your private Zoom link is here.",
       heading: "See you tomorrow.",
       bodyHtml: body,
       baseUrl: ctx.baseUrl,
@@ -273,7 +273,7 @@ export function buildHourBeforeReminder(ctx: ReminderContext) {
   const clock = formatEasternClock(ctx.start);
   const body = [
     paragraph(
-      `${escapeHtml(ctx.firstName)}, we go live at ${escapeHtml(clock)}, one hour from now. Click the button a few minutes early so Zoom has time to connect.`,
+      `${escapeHtml(ctx.firstName)}, Finding the Gap begins in one hour at ${escapeHtml(clock)}. You have something valuable to offer. Make this hour a gift of clarity to yourself.`,
     ),
     buttonRow("Join the session", ctx.joinUrl),
     zoomDetails(ctx),
@@ -284,7 +284,7 @@ export function buildHourBeforeReminder(ctx: ReminderContext) {
   ].join("");
 
   const text = [
-    `${ctx.firstName}, we go live at ${clock}, one hour from now. Join a few minutes early so Zoom has time to connect.`,
+    `${ctx.firstName}, Finding the Gap begins in one hour at ${clock}. Your experience matters. Join a few minutes early so Zoom has time to connect.`,
     ``,
     `Join the session: ${ctx.joinUrl}`,
     ...zoomDetailsText(ctx),
@@ -296,7 +296,7 @@ export function buildHourBeforeReminder(ctx: ReminderContext) {
   ].join("\n");
 
   return {
-    subject: "Starting in one hour: your Zoom link",
+    subject: "Finding the Gap begins in one hour — your Zoom link",
     html: shell({
       preheader: `We go live at ${clock}. Your link is inside.`,
       heading: "We begin in one hour.",
