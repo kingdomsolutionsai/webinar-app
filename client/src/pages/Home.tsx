@@ -12,17 +12,17 @@ function buildChatContext(event: PublicEvent): string {
   const scheduled = !isPlaceholder(event.date);
   return [
     "KINGDOM SOLUTIONS AI WEBINAR",
-    "Title: What Entrepreneurs Need to Know — How to Build in the Right Order.",
-    "Host: Tabitha Rector, Founder of Kingdom Solutions AI.",
-    "Audience: experienced entrepreneurs and professionals building a business from their expertise.",
+    "Title: Finding the Gap — What Is Keeping Your Business From Moving Forward?",
+    "Host: Tabitha Rector, Founder of Kingdom Solutions AI by Revived Spirit.",
+    "Audience: experienced Christian women entrepreneurs who want to steward their skills, gifts, and calling with clarity.",
     scheduled
       ? `Next live workshop: ${event.date} at ${isPlaceholder(event.time) ? "time to be announced" : event.time + " Eastern Time"}. ${isPlaceholder(event.duration) ? "" : "Duration: " + event.duration + "."} Registration is on this page.`
       : "The next live date will be announced on this page.",
-    "Core promise: begin with the Direction gap, recognize the Offer, Audience, and Structure gaps, identify the leading gap in your own business, and choose one specific next action. The eight business systems are supporting context, not the main teaching.",
-    "What participants do: reflect on the places their effort is not producing results, test their likely starting gap, and choose one practical action. AI supports processes while people retain authority.",
-    "Reason to attend live: a guided starting-point exercise, live Q&A, and a First-Sale Readiness Checklist thank-you gift for people who attend.",
+    "Core promise: help attendees recognize a possible business gap and leave with one clear next action. The full teaching is shared during the live workshop.",
+    "What participants do: reflect on where their effort is not producing results and identify a practical starting point. AI may support processes, with human authority throughout.",
+    "Two distinct gifts: after email confirmation, Part One of Tabitha’s Entrepreneur Handbook; after live attendance, the First-Sale Readiness Checklist. Live Q&A is included.",
     "Registration: first name, last name, email address. Email confirmation is required. Private Zoom details are delivered only after confirmation. Previous webinars do not automatically register someone for this one.",
-    "This is a business-building webinar, NOT a book promotion. The book is a separate resource; do not promise a free book or chapter when someone registers for the webinar.",
+    "This is a faith-rooted business webinar, not a book promotion. Chapter One is a signup thank-you; the complete Handbook remains a separate paid resource. Do not teach the full method in chat.",
     "Avoid promising guaranteed sales, earnings, or business outcomes. The workshop is educational, not legal, tax, or financial advice.",
     "Answer warmly and briefly. Invite the visitor to use the form. For questions not addressed here, email tabitha@kingdomsolutionsai.com.",
   ].join("\n");
@@ -45,18 +45,18 @@ function EventFact({ label, value }: { label: string; value: string }) {
 const TAKEAWAYS = [
   {
     number: "01",
-    title: "Recognize a Direction gap",
-    text: "See why experience and effort can still leave you uncertain about what to build, for whom, and why.",
+    title: "Recognize where clarity is missing",
+    text: "Start with the Direction Gap: whom you serve, the problem you solve, and the offer you want to build.",
   },
   {
     number: "02",
-    title: "See the other three gaps",
-    text: "Recognize signs of an Offer, Audience, or Structure gap and how they can compound one another.",
+    title: "Understand the four business gaps",
+    text: "Notice the signals of Direction, Offer, Audience, and Structure gaps without trying to fix everything at once.",
   },
   {
     number: "03",
-    title: "Choose your next right step",
-    text: "Identify your likely starting point and one practical action to take after the session.",
+    title: "Leave with one faithful next step",
+    text: "Choose one practical action for the next thirty days and see how thoughtful stewardship becomes a plan.",
   },
 ];
 
@@ -104,20 +104,21 @@ export default function Home() {
           <div className="container grid gap-12 py-12 lg:grid-cols-[1.06fr_0.94fr] lg:items-center lg:gap-16 lg:py-20">
             <div>
               <p className="inline-flex items-center gap-2 border border-gold/45 bg-gold/10 px-4 py-2 font-sans text-[11px] font-bold uppercase tracking-[0.18em] text-gold">
-                GET 2027 READY! · Live business-building webinar
+                GET 2027 READY! · Free faith-rooted business webinar
               </p>
               <h1 className="mt-7 max-w-2xl font-display text-[40px] font-bold leading-[1.1] tracking-[-0.02em] text-white sm:text-5xl xl:text-[57px]">
-                What Entrepreneurs <span className="text-gold">Need to Know</span>
+                Finding the <span className="text-gold">Gap</span>
               </h1>
               <p className="mt-5 max-w-xl font-display text-2xl font-medium leading-snug text-white sm:text-[31px]">
-                Find the Gap. Build in the Right Order.
+                What's Keeping Your Business From Moving Forward?
               </p>
               <GoldRule className="mt-7" />
               <p className="mt-7 max-w-xl font-serif text-[19px] leading-[1.65] text-white/85">
-                You have experience, ideas, and a desire to build something meaningful. Maybe you've
-                started already, but the results still do not match the work. Or maybe you cannot
-                decide where to begin. We will start with the Direction gap, then look at Offer,
-                Audience, and Structure so you can see what really needs attention first.
+                You have valuable experience, God-given gifts, and a desire to build something
+                meaningful. But perhaps you've worked harder, changed your message, or invested
+                in more training without seeing the progress you hoped for. That does not diminish
+                your worth. Join me to discover which business gap deserves your attention first
+                and how to steward your next step with wisdom and confidence.
               </p>
               {!isWaitlist && !isLoading ? (
                 <div className="mt-8 grid gap-5 sm:grid-cols-2">
@@ -137,13 +138,13 @@ export default function Home() {
                   <ArrowRight className="ml-2 size-4" />
                 </Button>
                 <p className="max-w-[220px] font-serif text-[14px] leading-relaxed text-white/65">
-                  Led by Tabitha Rector, Founder, Kingdom Solutions AI™
+                  Led by Tabitha Rector, PCC · Kingdom Solutions AI™ by Revived Spirit
                 </p>
               </div>
               <div className="mt-9 flex items-center gap-3 border-t border-gold/20 pt-6">
                 <Check className="size-5 shrink-0 text-gold" />
                 <p className="font-serif text-[15px] leading-relaxed text-white/75">
-                  AI can support the process. You retain authority over decisions.
+                  Your worth is not measured by your sales. Your calling deserves wise stewardship.
                 </p>
               </div>
             </div>
@@ -153,12 +154,12 @@ export default function Home() {
                   {isWaitlist ? "Stay informed" : "Your invitation"}
                 </p>
                 <p className="mt-2 font-display text-xl font-semibold text-white">
-                  {isWaitlist ? "Be first to hear about the next session." : "Your next right step starts here."}
+                  {isWaitlist ? "Be first to hear about the next session." : "Your gifts and calling deserve a clear starting point."}
                 </p>
                 <p className="mt-2 font-serif text-[15px] leading-relaxed text-white/70">
                   {isWaitlist
                     ? "Leave your details to hear when the next live workshop is announced."
-                    : "Register below. Confirm your email to receive your private Zoom details."}
+                    : "Register below. Confirm your email to receive Chapter One of my Handbook and your private Zoom details."}
                 </p>
               </div>
               {isLoading ? (
@@ -187,15 +188,16 @@ export default function Home() {
           <div className="container py-14 sm:py-16">
             <div className="mx-auto max-w-3xl text-center">
               <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.19em] text-gold-dark">
-                One problem. One starting point. One practical action.
+                Faith, clarity, and one practical starting point.
               </p>
               <h2 className="mt-4 font-display text-3xl font-bold leading-tight text-ink sm:text-4xl">
-                Stop adding more. Find what needs to come first.
+                You are not failing because you haven't figured it all out.
               </h2>
               <p className="mt-4 font-serif text-lg leading-relaxed text-ink/70">
-                If you are getting started or reassessing a business that is not landing the way
-                you hoped, this session will help you recognize what is unclear and what comes
-                first. Bring your experience, your questions, and a notebook.
+                Building a business is a responsibility and an honor. You deserve a space to bring
+                your questions without judgment, recognize what may be missing, and move ahead
+                with intentional next steps. We will begin with the Direction Gap, then connect
+                it to the other gaps that may be affecting your progress.
               </p>
             </div>
             <div className="mt-10 grid gap-5 md:grid-cols-3">
@@ -210,6 +212,26 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="border-b border-gold/20 bg-white">
+          <div className="container grid gap-6 py-12 md:grid-cols-[1fr_1.1fr] md:items-center">
+            <div>
+              <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-gold-dark">
+                Meet your host
+              </p>
+              <h2 className="mt-3 font-display text-3xl font-bold text-ink">
+                Business experience, grounded in faith
+              </h2>
+            </div>
+            <p className="font-serif text-[17px] leading-relaxed text-ink/75">
+              I'm Tabitha Rector, a Professional Certified Coach with more than 30 years of experience
+              in banking, lending, sales, marketing, and business advisory. I've coached teams,
+              helped bank branches generate millions of dollars, and worked with business owners
+              to recognize what needs attention. I believe our gifts should be stewarded with
+              integrity, wisdom, and excellence.
+            </p>
+          </div>
+        </section>
+
         <section className="border-b border-gold/25 bg-[#f4efe5]">
           <div className="container flex flex-col gap-7 py-12 md:flex-row md:items-center md:justify-between">
             <div className="max-w-2xl">
@@ -218,10 +240,10 @@ export default function Home() {
                 <h2 className="font-display text-2xl font-bold text-ink">Why attend live?</h2>
               </div>
               <p className="mt-3 font-serif text-[17px] leading-relaxed text-ink/75">
-                Work through a live gap-identification exercise with me and bring your questions
-                for the Q&A. Those who attend live also receive my First-Sale Readiness Checklist
-                as a thank-you. If you need implementation support afterward, I will explain the
-                30-Day Business Fast Track™, starting soon.
+                After confirming your registration, receive Chapter One of my Entrepreneur Handbook.
+                Then join me live for a guided gap-identification exercise and Q&A. Women who
+                attend live also receive my First-Sale Readiness Checklist. If you want guided
+                implementation, I will explain my 30-Day Business Fast Track™, starting soon.
               </p>
             </div>
             <Button
@@ -241,7 +263,7 @@ export default function Home() {
               “Clarity before complexity. Capacity before scale. Human authority throughout.”
             </p>
             <p className="mt-5 font-sans text-[11px] uppercase tracking-[0.15em] text-gold">
-              Tabitha Rector · Kingdom Solutions AI™
+              Tabitha Rector · Kingdom Solutions AI™ by Revived Spirit
             </p>
             <p className="mt-7 font-serif text-[13px] leading-relaxed text-white/45">
               Educational content. Not legal, tax, or financial advice. No guaranteed business results.
