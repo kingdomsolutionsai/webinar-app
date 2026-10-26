@@ -3,8 +3,8 @@ import { formatEastern, formatEasternClock, parseDurationMinutes, parseEventStar
 import { C, DISPLAY, SANS, SERIF, buttonRow, escapeHtml, paragraph, pullQuote, shell } from "./sequence";
 
 /**
- * The three pre-session reminders: one week before, the day before, and one
- * hour before.
+ * The pre-session reminders: one week before, the day before, one hour before,
+ * and fifteen minutes before.
  *
  * Both carry the Zoom link, the meeting ID and the passcode, so someone whose
  * link misbehaves can still get in by typing the numbers. Nothing here is
@@ -36,12 +36,18 @@ export function zoomMeetingId(joinUrl: string): string | null {
   return `${id.slice(0, 3)} ${id.slice(3, 6)} ${id.slice(6)}`;
 }
 
+function workshopTitle(ctx: ReminderContext): string {
+  return ctx.start.getTime() >= Date.parse("2026-11-01T00:00:00Z")
+    ? "Finding the Gap"
+    : "What Entrepreneurs Need to Know";
+}
+
 function googleCalendarUrl(ctx: ReminderContext): string {
   const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const end = new Date(ctx.start.getTime() + ctx.durationMinutes * 60000);
   const params = new URLSearchParams({
     action: "TEMPLATE",
-    text: "What Entrepreneurs Need to Know (live with Tabitha Rector)",
+    text: `${workshopTitle(ctx)} (live with Tabitha Rector)`,
     dates: `${stamp(ctx.start)}/${stamp(end)}`,
     details: `Join on Zoom: ${ctx.joinUrl}`,
     location: ctx.joinUrl,
@@ -51,7 +57,7 @@ function googleCalendarUrl(ctx: ReminderContext): string {
 
 function sessionCard(ctx: ReminderContext) {
   return `<tr><td style="padding:24px 36px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${C.gold};background-color:${C.goldTint};"><tr><td style="padding:24px 28px;text-align:center;">
-    <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#9A7B12;">What Entrepreneurs Need to Know</div>
+    <div style="font-family:${SANS};font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#9A7B12;">${escapeHtml(workshopTitle(ctx))}</div>
     <p style="margin:12px 0 0;font-family:${DISPLAY};font-size:21px;line-height:1.35;font-weight:700;color:${C.navy};">${escapeHtml(formatEastern(ctx.start))}</p>
     <p style="margin:8px 0 0;font-family:${SERIF};font-size:16px;color:${C.muted};">${ctx.durationMinutes} minutes, live on Zoom</p>
   </td></tr></table></td></tr>`;
@@ -128,7 +134,7 @@ export function seatBlock(session: SessionDetails): { when: string; html: string
       html: [
         sessionCard(ctx),
         calendarRow,
-        paragraph(`Your Zoom link will arrive by email one week before, the day before, and one hour before we start.`),
+        paragraph(`Your Zoom link will arrive after confirmation, then again the day before, one hour before, and fifteen minutes before we start.`),
       ].join(""),
       text: [
         `What Entrepreneurs Need to Know`,
@@ -137,7 +143,7 @@ export function seatBlock(session: SessionDetails): { when: string; html: string
         ``,
         `Add it to your Google Calendar: ${calendarUrl}`,
         ``,
-        `Your Zoom link will arrive by email one week before, the day before, and one hour before we start.`,
+        `Your Zoom link will arrive after confirmation, then again the day before, one hour before, and fifteen minutes before we start.`,
       ],
     };
   }
@@ -221,14 +227,14 @@ export function buildDayBeforeReminder(ctx: ReminderContext) {
   const calendarUrl = googleCalendarUrl(ctx);
   const body = [
     paragraph(
-      `${escapeHtml(ctx.firstName)}, tomorrow we walk the whole sequence together. Here is everything you need to get in, so you are not hunting for it in the morning.`,
+      `${escapeHtml(ctx.firstName)}, tomorrow we gather for ${escapeHtml(workshopTitle(ctx))}. If you've been working hard without the progress you hoped for, you are not alone. Come ready to identify one wise next step.`,
     ),
     sessionCard(ctx),
     buttonRow("Join on Zoom", ctx.joinUrl),
     zoomDetails(ctx),
     `<tr><td style="padding:14px 36px 0;"><p style="margin:0;font-family:${SANS};font-size:13px;"><a href="${escapeHtml(calendarUrl)}" style="color:${C.navy};text-decoration:underline;">Add it to your Google Calendar</a></p></td></tr>`,
     paragraph(
-      `Bring something to write with. There is one exercise, it takes about four minutes, and it is the part most people tell me they remember.`,
+      `Bring a notebook and your questions. You do not need to have everything figured out before we meet.`,
     ),
     paragraph(
       `Everyone who attends live receives the ${escapeHtml(READINESS_CHECKLIST.title)} afterward. It is my thank-you for showing up.`,
@@ -236,9 +242,9 @@ export function buildDayBeforeReminder(ctx: ReminderContext) {
   ].join("");
 
   const text = [
-    `${ctx.firstName}, tomorrow we walk the whole sequence together. Here is everything you need to get in.`,
+    `${ctx.firstName}, tomorrow we gather for ${workshopTitle(ctx)}. You are not alone; come ready to identify one wise next step.`,
     ``,
-    `What Entrepreneurs Need to Know`,
+    workshopTitle(ctx),
     formatEastern(ctx.start),
     `${ctx.durationMinutes} minutes, live on Zoom`,
     ``,
@@ -247,7 +253,7 @@ export function buildDayBeforeReminder(ctx: ReminderContext) {
     ``,
     `Add it to your Google Calendar: ${calendarUrl}`,
     ``,
-    `Bring something to write with. There is one exercise, it takes about four minutes, and it is the part most people tell me they remember.`,
+    `Bring a notebook and your questions. You do not need to have everything figured out before we meet.`,
     ``,
     `Everyone who attends live receives the ${READINESS_CHECKLIST.title} afterward. It is my thank-you for showing up.`,
     ...signOffText(ctx),
@@ -256,7 +262,7 @@ export function buildDayBeforeReminder(ctx: ReminderContext) {
   return {
     subject: `Tomorrow at ${clock}: your Zoom link is inside`,
     html: shell({
-      preheader: "Everything you need to join tomorrow's live session.",
+      preheader: "Finding the Gap begins tomorrow. Your private Zoom link is here.",
       heading: "See you tomorrow.",
       bodyHtml: body,
       baseUrl: ctx.baseUrl,
@@ -273,7 +279,7 @@ export function buildHourBeforeReminder(ctx: ReminderContext) {
   const clock = formatEasternClock(ctx.start);
   const body = [
     paragraph(
-      `${escapeHtml(ctx.firstName)}, we go live at ${escapeHtml(clock)}, one hour from now. Click the button a few minutes early so Zoom has time to connect.`,
+      `${escapeHtml(ctx.firstName)}, ${escapeHtml(workshopTitle(ctx))} begins in one hour at ${escapeHtml(clock)}. You have something valuable to offer. Make this hour a gift of clarity to yourself.`,
     ),
     buttonRow("Join the session", ctx.joinUrl),
     zoomDetails(ctx),
@@ -284,7 +290,7 @@ export function buildHourBeforeReminder(ctx: ReminderContext) {
   ].join("");
 
   const text = [
-    `${ctx.firstName}, we go live at ${clock}, one hour from now. Join a few minutes early so Zoom has time to connect.`,
+    `${ctx.firstName}, ${workshopTitle(ctx)} begins in one hour at ${clock}. Your experience matters. Join a few minutes early so Zoom has time to connect.`,
     ``,
     `Join the session: ${ctx.joinUrl}`,
     ...zoomDetailsText(ctx),
@@ -300,6 +306,41 @@ export function buildHourBeforeReminder(ctx: ReminderContext) {
     html: shell({
       preheader: `We go live at ${clock}. Your link is inside.`,
       heading: "We begin in one hour.",
+      bodyHtml: body,
+      baseUrl: ctx.baseUrl,
+      logoUrl: ctx.logoUrl,
+      unsubscribeUrl: ctx.unsubscribeUrl,
+      footerNote: FOOTER,
+    }),
+    text,
+  };
+}
+
+/** Final reminder: fifteen minutes before the session. */
+export function buildFifteenBeforeReminder(ctx: ReminderContext) {
+  const clock = formatEasternClock(ctx.start);
+  const body = [
+    paragraph(`${escapeHtml(ctx.firstName)}, we begin in fifteen minutes. I am looking forward to welcoming you. You do not need to have everything figured out before you come.`),
+    buttonRow("Join the webinar now", ctx.joinUrl),
+    zoomDetails(ctx),
+    paragraph("If the link gives you trouble, open Zoom and enter the meeting ID and passcode above. Bring a notebook and a little breathing room."),
+  ].join("");
+
+  const text = [
+    `${ctx.firstName}, we begin in fifteen minutes at ${clock}. You do not need to have everything figured out before you come.`,
+    "",
+    `Join the webinar now: ${ctx.joinUrl}`,
+    ...zoomDetailsText(ctx),
+    "",
+    "Bring a notebook. I look forward to seeing you.",
+    ...signOffText(ctx),
+  ].join("\n");
+
+  return {
+    subject: "We begin in 15 minutes: your Zoom link is here",
+    html: shell({
+      preheader: "Come as you are. Join the live session in a few minutes.",
+      heading: "Your place is ready.",
       bodyHtml: body,
       baseUrl: ctx.baseUrl,
       logoUrl: ctx.logoUrl,

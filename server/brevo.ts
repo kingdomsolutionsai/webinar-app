@@ -8,7 +8,7 @@ import {
   parseDurationMinutes,
   parseEventStart,
 } from "./eventTime";
-import { buildDayBeforeReminder, buildHourBeforeReminder, buildWeekBeforeReminder, type ReminderContext } from "./reminders";
+import { buildDayBeforeReminder, buildHourBeforeReminder, buildFifteenBeforeReminder, buildWeekBeforeReminder, type ReminderContext } from "./reminders";
 import {
   buildFinalLetter,
   buildPostSessionLetter,
@@ -271,6 +271,9 @@ export async function syncRegistrantToBrevo(email: string, ioIn?: BrevoIO) {
     const settings = await io.getSettings();
     const sessionKey = sessionKeyFor(settings.date);
     const currentList = sessionKey ? Number(settings[`brevoConfirmed_${sessionKey}`] ?? 0) : 0;
+    // A later session must never fall through into the legacy confirmed list.
+    // The owner must run Brevo setup to create the session-specific list first.
+    if (sessionKey && !currentList) return { ok: false as const, skipped: "current event list not configured" };
     if (sessionKey && currentList) {
       const { listSessionRegistrations } = await import("./sessions");
       const row = (await listSessionRegistrations(sessionKey)).find(r=>r.email.toLowerCase()===email.trim().toLowerCase());
@@ -394,7 +397,7 @@ export type PlannedCampaign = {
     | "reminder-week"
     | "reminder-day"
     | "reminder-hour"
-    | "reminder-ten"
+    | "reminder-fifteen"
     | "letter-4"
     | "letter-5"
     | "letter-6"
@@ -450,7 +453,7 @@ export function planEventCampaigns(input: {
     { key: "reminder-week", label: "Reminder: one week before", list: "nurture", at: sameEasternClock(start, -7), ...pick(weekBefore) },
     { key: "reminder-day", label: "Reminder: the day before", list: "nurture", at: new Date(start.getTime() - day), ...pick(dayBefore) },
     { key: "reminder-hour", label: "Reminder: one hour before", list: "nurture", at: new Date(start.getTime() - hour), ...pick(hourBefore) },
-    ...(sessionKeyFor(settings.date) ? [{ key: "reminder-ten" as const, label: "Reminder: ten minutes before", list: "nurture" as const, at: new Date(start.getTime() - 10*60*1000), ...pick({subject:"We begin in 10 minutes — join us live",html:hourBefore.html.replace(/one hour from now/gi,"in 10 minutes").replace(/one hour/gi,"10 minutes")}) }] : []),
+    ...(sessionKeyFor(settings.date) ? [{ key: "reminder-fifteen" as const, label: "Reminder: fifteen minutes before", list: "nurture" as const, at: new Date(start.getTime() - 15 * 60 * 1000), ...pick(buildFifteenBeforeReminder(reminderCtx)) }] : []),
   ];
 
   /*
@@ -726,7 +729,7 @@ export async function setupBrevo(options: { requestOrigin?: string; io?: BrevoIO
       const items: StoredCampaigns["items"] = [];
       const dateTag = start.toISOString().slice(0, 10);
       const soonest = io.now().getTime() + 5 * 60 * 1000;
-      for (const campaign of (sessionKey ? planEventCampaigns({ baseUrl, settings, start }).filter(c=>["reminder-day","reminder-hour","reminder-ten"].includes(c.key)) : planEventCampaigns({ baseUrl, settings, start }).filter(c=>c.key!=="reminder-ten"))) {
+      for (const campaign of (sessionKey ? planEventCampaigns({ baseUrl, settings, start }).filter(c=>["reminder-day","reminder-hour","reminder-fifteen"].includes(c.key)) : planEventCampaigns({ baseUrl, settings, start }).filter(c=>c.key!=="reminder-fifteen"))) {
         const base = {
           key: campaign.key,
           label: campaign.label,
