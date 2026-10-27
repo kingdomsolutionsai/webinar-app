@@ -450,7 +450,7 @@ export function planEventCampaigns(input: {
     { key: "reminder-week", label: "Reminder: one week before", list: "nurture", at: sameEasternClock(start, -7), ...pick(weekBefore) },
     { key: "reminder-day", label: "Reminder: the day before", list: "nurture", at: new Date(start.getTime() - day), ...pick(dayBefore) },
     { key: "reminder-hour", label: "Reminder: one hour before", list: "nurture", at: new Date(start.getTime() - hour), ...pick(hourBefore) },
-    ...(sessionKeyFor(settings.date) ? [{ key: "reminder-ten" as const, label: "Reminder: ten minutes before", list: "nurture" as const, at: new Date(start.getTime() - 10*60*1000), ...pick({subject:"We begin in 10 minutes — join us live",html:hourBefore.html.replace(/one hour from now/gi,"in 10 minutes").replace(/one hour/gi,"10 minutes")}) }] : []),
+    ...(sessionKeyFor(settings.date) ? [{ key: "reminder-ten" as const, label: "Reminder: fifteen minutes before", list: "nurture" as const, at: new Date(start.getTime() - 15*60*1000), ...pick({subject:"We begin in 15 minutes — join us live",html:hourBefore.html.replace(/one hour from now/gi,"in 15 minutes").replace(/one hour/gi,"15 minutes")}) }] : []),
   ];
 
   /*
