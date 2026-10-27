@@ -2,26 +2,26 @@ import { useEffect, useRef, useState } from "react";
 
 export function webinarFallbackReply(question: string, context?: string): string {
   const normalized = question.trim().toLowerCase();
-  const schedule = context?.match(/Next live workshop: (.*?)(?:\\. Duration:|\\. Registration)/)?.[1];
+  const schedule = context?.match(/Next live workshop: (.*?)(?:\. Duration:|\. Registration)/)?.[1];
 
-  if (/\\b(when|date|day|time|start)\\b/.test(normalized)) {
+  if (/\b(when|date|day|time|start)\b/.test(normalized)) {
     return schedule
       ? `The next live webinar is ${schedule}. It is a 45-minute session on Zoom.`
       : "The next live webinar date will be announced on this page.";
   }
-  if (/\\b(cost|price|free|pay|investment)\\b/.test(normalized)) {
+  if (/\b(cost|price|free|pay|investment)\b/.test(normalized)) {
     return "The webinar is free. Register on this page, then confirm your email to receive the private Zoom details.";
   }
-  if (/\\b(who|for me|audience|beginner|entrepreneur)\\b/.test(normalized)) {
+  if (/\b(who|for me|audience|beginner|entrepreneur)\b/.test(normalized)) {
     return "This webinar is for experienced entrepreneurs and professionals building a business from their expertise.";
   }
-  if (/\\b(learn|cover|topic|about|gap|system)\\b/.test(normalized)) {
+  if (/\b(learn|cover|topic|about|gap|system)\b/.test(normalized)) {
     return "You will learn how to recognize Direction, Offer, Audience, and Structure gaps, identify what needs attention first, and choose one practical next action.";
   }
-  if (/\\b(register|sign up|seat|zoom|join|link|confirm)\\b/.test(normalized)) {
+  if (/\b(register|sign up|seat|zoom|join|link|confirm)\b/.test(normalized)) {
     return "Use the registration form on this page. After you confirm your email, we will send your private Zoom details and the registration clarity exercise.";
   }
-  if (/\\b(gift|exercise|checklist|receive|download)\\b/.test(normalized)) {
+  if (/\b(gift|exercise|checklist|receive|download)\b/.test(normalized)) {
     return "Confirmed November 17 registrants receive the Finding Your Business Gap clarity exercise. People who attend live also receive the separate First-Sale Readiness Checklist.";
   }
   return "I can help with the webinar date, who it is for, what you will learn, registration, Zoom access, and the participant gifts. What would you like to know?";
