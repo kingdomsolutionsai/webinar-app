@@ -128,7 +128,7 @@ export function seatBlock(session: SessionDetails): { when: string; html: string
       html: [
         sessionCard(ctx),
         calendarRow,
-        paragraph(`Your Zoom link will arrive by email one week before, the day before, and one hour before we start.`),
+        paragraph(`Your Zoom link will arrive by email the day before, one hour before, and 15 minutes before we start.`),
       ].join(""),
       text: [
         `What Entrepreneurs Need to Know`,
@@ -137,7 +137,7 @@ export function seatBlock(session: SessionDetails): { when: string; html: string
         ``,
         `Add it to your Google Calendar: ${calendarUrl}`,
         ``,
-        `Your Zoom link will arrive by email one week before, the day before, and one hour before we start.`,
+        `Your Zoom link will arrive by email the day before, one hour before, and 15 minutes before we start.`,
       ],
     };
   }
@@ -148,7 +148,7 @@ export function seatBlock(session: SessionDetails): { when: string; html: string
       buttonRow("Join on Zoom", session.joinUrl),
       zoomDetails(ctx),
       calendarRow,
-      paragraph(`I will send this link again one week before, the day before, and one hour before we start, so you will not have to hunt for it.`),
+      paragraph(`I will send this link again the day before, one hour before, and 15 minutes before we start, so you will not have to hunt for it.`),
     ].join(""),
     text: [
       `What Entrepreneurs Need to Know`,
@@ -160,7 +160,7 @@ export function seatBlock(session: SessionDetails): { when: string; html: string
       ``,
       `Add it to your Google Calendar: ${calendarUrl}`,
       ``,
-      `I will send this link again one week before, the day before, and one hour before we start, so you will not have to hunt for it.`,
+      `I will send this link again the day before, one hour before, and 15 minutes before we start, so you will not have to hunt for it.`,
     ],
   };
 }
