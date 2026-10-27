@@ -120,6 +120,24 @@ export const READINESS_CHECKLIST = {
 } as const;
 
 /**
+ * Registration gift approved specifically for the November 17, 2026 webinar.
+ * It is delivered only after double opt-in confirmation. The separate
+ * First-Sale Readiness Checklist remains attendance-only.
+ */
+export const REGISTRATION_GIFT = {
+  sessionKey: "2026-11-17",
+  url: "/downloads/Finding-Your-Business-Gap-5-Minute-Clarity-Exercise.pdf",
+  filename: "Finding-Your-Business-Gap-5-Minute-Clarity-Exercise.pdf",
+  title: "Finding Your Business Gap: A 5-Minute Clarity Exercise",
+} as const;
+
+/** Returns the hosted gift URL only for the approved November session. */
+export function registrationGiftUrlFor(sessionKey: string | undefined, baseUrl: string) {
+  if (sessionKey !== REGISTRATION_GIFT.sessionKey) return undefined;
+  return `${baseUrl.replace(/\/+$/, "")}${REGISTRATION_GIFT.url}`;
+}
+
+/**
  * The two free resources, offered as a choice. Different readers want different
  * things: one wants to understand, the other wants to act.
  */

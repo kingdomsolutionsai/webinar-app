@@ -3,6 +3,7 @@ import {
   MAIL_FROM,
   MAIL_OWNER,
   READINESS_CHECKLIST,
+  REGISTRATION_GIFT,
   SAMPLE_CHAPTER,
   type ResourceChoice,
 } from "../shared/event";
@@ -641,6 +642,7 @@ export async function sendSignupEmails(input: {
   trackedUrls?: { chapter: string; checklist?: string };
   seat?: { when: string; html: string; text: string[] };
   sessionOnly?: boolean;
+  registrationGiftUrl?: string;
 }): Promise<EmailResult> {
   const registrant = input.sessionOnly ? null : buildRegistrantEmail({
     firstName: input.firstName,
@@ -650,7 +652,7 @@ export async function sendSignupEmails(input: {
     trackedUrls: input.trackedUrls,
     seat: input.seat,
   });
-  const content = registrant ?? { subject: `Your seat is confirmed: ${input.seat?.when ?? "the next webinar"}`, html: `<div style="font:17px/1.7 Georgia,serif;padding:28px"><h2>What Entrepreneurs Need to Know</h2><h3>How to Build in the Right Order</h3><p>Welcome, ${input.firstName.replace(/[<>&"]/g, "")}. Your seat is confirmed.</p>${input.seat?.html ?? "<p>Watch your inbox for event details.</p>"}<p>We look forward to seeing you live.</p><p>Tabitha Rector<br>Kingdom Solutions AI™</p><p><a href="${input.unsubscribeUrl ?? "#"}">Unsubscribe</a></p></div>`, text: [`Your seat is confirmed for ${input.seat?.when ?? "the next webinar"}.`, ...(input.seat?.text ?? [])].join("\n") };
+  const content = registrant ?? buildSessionConfirmationEmail(input);
   const result = await sendEmail({
     to: { email: input.email, name: `${input.firstName} ${input.lastName}`.trim() },
     subject: content.subject,
@@ -672,4 +674,35 @@ export async function sendSignupEmails(input: {
     tags: ["owner-notification"],
   }).catch(() => undefined);
   return result;
+}
+
+/**
+ * Post-double-opt-in email for a scheduled webinar. A gift URL is supplied by
+ * the router only for the approved November 17 session, keeping later sessions
+ * and the attendance-only checklist isolated.
+ */
+export function buildSessionConfirmationEmail(input: {
+  firstName: string;
+  seat?: { when: string; html: string; text: string[] };
+  unsubscribeUrl?: string;
+  registrationGiftUrl?: string;
+}) {
+  const name = escapeHtml(input.firstName.trim() || "friend");
+  const when = input.seat?.when ?? "the next webinar";
+  const giftUrl = input.registrationGiftUrl ? escapeHtml(input.registrationGiftUrl) : undefined;
+  const giftHtml = giftUrl
+    ? `<div style="margin:26px 0;padding:22px;border:1px solid ${C.gold};background:${C.goldTint}"><p style="margin:0 0 6px;font-family:${SANS};font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:#9A7B12">Your registration gift</p><h3 style="margin:0 0 12px;font-family:${DISPLAY};font-size:20px;line-height:1.35;color:${C.navy}">${escapeHtml(REGISTRATION_GIFT.title)}</h3><p style="margin:0 0 16px">Use this five-minute exercise before we meet to identify whether Direction, Offer, Audience, or Structure needs your attention first.</p><a href="${giftUrl}" style="display:inline-block;padding:13px 20px;background:${C.ink};color:${C.gold};font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;text-decoration:none">Download the clarity exercise</a></div>`
+    : "";
+  const giftText = giftUrl
+    ? [``, `YOUR REGISTRATION GIFT`, REGISTRATION_GIFT.title, `Download: ${input.registrationGiftUrl}`]
+    : [];
+  return {
+    subject: `Your seat is confirmed: ${when}`,
+    html: `<div style="font:17px/1.7 Georgia,serif;padding:28px"><h2>What Entrepreneurs Need to Know</h2><h3>How to Build in the Right Order</h3><p>Welcome, ${name}. Your seat is confirmed.</p>${input.seat?.html ?? "<p>Watch your inbox for event details.</p>"}${giftHtml}<p>We look forward to seeing you live.</p><p>Tabitha Rector<br>Kingdom Solutions AI™</p><p><a href="${escapeHtml(input.unsubscribeUrl ?? "#")}">Unsubscribe</a></p></div>`,
+    text: [
+      `Your seat is confirmed for ${when}.`,
+      ...(input.seat?.text ?? []),
+      ...giftText,
+    ].join("\n"),
+  };
 }

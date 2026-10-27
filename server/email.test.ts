@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildOwnerEmail, buildRegistrantEmail, sendEmail } from "./email";
-import { LION_MARK_URL, MAIL_FROM, READINESS_CHECKLIST, SAMPLE_CHAPTER } from "../shared/event";
+import { buildOwnerEmail, buildRegistrantEmail, buildSessionConfirmationEmail, sendEmail } from "./email";
+import { LION_MARK_URL, MAIL_FROM, READINESS_CHECKLIST, REGISTRATION_GIFT, SAMPLE_CHAPTER } from "../shared/event";
 
 const BASE = "https://example.manus.space";
 
@@ -280,6 +280,23 @@ describe("the email sent after someone confirms, once a session is set", () => {
     joinUrl: "https://us06web.zoom.us/j/83153745263?pwd=lGvfk21qK8g6QaUmamKTwmqxUZTeda.1",
     zoomPasscode: "480462",
   };
+
+  it("delivers the approved registration gift without exposing the attendance-only checklist", () => {
+    const giftUrl = `${BASE}${REGISTRATION_GIFT.url}`;
+    const mail = buildSessionConfirmationEmail({
+      firstName: "Ada",
+      registrationGiftUrl: giftUrl,
+    });
+    expect(mail.html).toContain(REGISTRATION_GIFT.title);
+    expect(mail.html).toContain(giftUrl);
+    expect(mail.text).toContain(giftUrl);
+    expect(mail.html + mail.text).not.toContain(READINESS_CHECKLIST.title);
+  });
+
+  it("does not mention a registration gift when no approved gift URL is supplied", () => {
+    const mail = buildSessionConfirmationEmail({ firstName: "Ada" });
+    expect(mail.html + mail.text).not.toContain(REGISTRATION_GIFT.title);
+  });
 
   it("carries the date, Zoom link, meeting ID, passcode and calendar link", async () => {
     const { seatBlock, upcomingSession } = await import("./reminders");
