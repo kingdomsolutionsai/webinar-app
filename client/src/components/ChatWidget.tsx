@@ -1,5 +1,32 @@
 import { useEffect, useRef, useState } from "react";
 
+export function webinarFallbackReply(question: string, context?: string): string {
+  const normalized = question.trim().toLowerCase();
+  const schedule = context?.match(/Next live workshop: (.*?)(?:\\. Duration:|\\. Registration)/)?.[1];
+
+  if (/\\b(when|date|day|time|start)\\b/.test(normalized)) {
+    return schedule
+      ? `The next live webinar is ${schedule}. It is a 45-minute session on Zoom.`
+      : "The next live webinar date will be announced on this page.";
+  }
+  if (/\\b(cost|price|free|pay|investment)\\b/.test(normalized)) {
+    return "The webinar is free. Register on this page, then confirm your email to receive the private Zoom details.";
+  }
+  if (/\\b(who|for me|audience|beginner|entrepreneur)\\b/.test(normalized)) {
+    return "This webinar is for experienced entrepreneurs and professionals building a business from their expertise.";
+  }
+  if (/\\b(learn|cover|topic|about|gap|system)\\b/.test(normalized)) {
+    return "You will learn how to recognize Direction, Offer, Audience, and Structure gaps, identify what needs attention first, and choose one practical next action.";
+  }
+  if (/\\b(register|sign up|seat|zoom|join|link|confirm)\\b/.test(normalized)) {
+    return "Use the registration form on this page. After you confirm your email, we will send your private Zoom details and the registration clarity exercise.";
+  }
+  if (/\\b(gift|exercise|checklist|receive|download)\\b/.test(normalized)) {
+    return "Confirmed November 17 registrants receive the Finding Your Business Gap clarity exercise. People who attend live also receive the separate First-Sale Readiness Checklist.";
+  }
+  return "I can help with the webinar date, who it is for, what you will learn, registration, Zoom access, and the participant gifts. What would you like to know?";
+}
+
 /**
  * Floating chat widget for the webinar sign-up page. Answers visitor
  * questions about the "What Entrepreneurs Need to Know" webinar, and nudges
@@ -77,6 +104,16 @@ export function ChatWidget({ context }: { context?: string }) {
 
   const closeChat = () => setOpen(false);
 
+  const resetChat = () => {
+    historyRef.current = [];
+    nextId.current = 1;
+    setMessages([{ id: 0, role: "assistant", content: GREETING }]);
+    setInput("");
+    setSending(false);
+    setHasGreeted(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const text = input.trim();
@@ -119,10 +156,9 @@ export function ChatWidget({ context }: { context?: string }) {
       }
     } catch (err) {
       setMessages(prev => prev.filter(m => m.id !== typingId));
-      addMessage(
-        "assistant",
-        "I'm having trouble connecting right now. Please try again in a moment, or email Tabitha directly.",
-      );
+      const reply = webinarFallbackReply(text, context);
+      addMessage("assistant", reply);
+      historyRef.current = [...historyRef.current, { role: "assistant", content: reply }];
       console.error("KSAI chat widget error:", err);
     } finally {
       setSending(false);
@@ -200,6 +236,18 @@ export function ChatWidget({ context }: { context?: string }) {
           background: none;
           border: none;
         }
+        .ksai-header-actions { display: flex; align-items: center; gap: 12px; }
+        #ksai-chat-reset {
+          cursor: pointer;
+          color: #c9b37a;
+          font: 10px Arial, sans-serif;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          background: none;
+          border: none;
+          padding: 4px;
+        }
+        #ksai-chat-reset:hover { color: #d4af37; }
 
         #ksai-chat-messages {
           flex: 1;
@@ -288,9 +336,14 @@ export function ChatWidget({ context }: { context?: string }) {
               <div className="ksai-title">Ask about the Webinar</div>
               <div className="ksai-sub">Kingdom Solutions AI</div>
             </div>
-            <button id="ksai-chat-close" aria-label="Close chat" onClick={closeChat} type="button">
-              &times;
-            </button>
+            <div className="ksai-header-actions">
+              <button id="ksai-chat-reset" aria-label="Reset conversation" onClick={resetChat} type="button">
+                Reset
+              </button>
+              <button id="ksai-chat-close" aria-label="Close chat" onClick={closeChat} type="button">
+                &times;
+              </button>
+            </div>
           </div>
           <div id="ksai-chat-messages" ref={messagesRef}>
             {messages.map(m => (
