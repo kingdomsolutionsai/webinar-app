@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from "react";
 
 export function webinarFallbackReply(question: string, context?: string): string {
   const normalized = question.trim().toLowerCase();
-  const schedule = context?.match(/Next live workshop: (.*?)(?:\. Duration:|\. Registration)/)?.[1];
+  const rawSchedule = context?.match(/Next live workshop: (.*?)(?:\. Duration:|\. Registration)/)?.[1];
+  const schedule = rawSchedule
+    ?.replace(/,(\d{4})/, ", $1")
+    .replace(/\s+Eastern Time$/i, "");
 
   if (/\b(when|date|day|time|start)\b/.test(normalized)) {
     return schedule
