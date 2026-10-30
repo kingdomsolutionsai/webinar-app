@@ -160,7 +160,7 @@ export default function Home() {
                 <p className="mt-2 font-serif text-[15px] leading-relaxed text-white/70">
                   {isWaitlist
                     ? "Leave your details to hear when the next live workshop is announced."
-                    : "Register below. Confirm your email to receive your private Zoom details and free five-minute clarity exercise."}
+                    : "Register and confirm your email to receive your private Zoom details and a free 5-Minute Business Gap Clarity Exercise. Attend live to receive the First-Sale Readiness Checklist as my thank-you."}
                 </p>
               </div>
               {isLoading ? (
