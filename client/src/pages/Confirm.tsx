@@ -5,6 +5,7 @@ import {
   AUDIT_INVITATION,
   EXERCISE_PROMPT,
   SAMPLE_CHAPTER,
+  REGISTRATION_GIFT,
   THREE_TRACKS,
 } from "@shared/event";
 import { AlertCircle, ArrowUpRight, BookOpen, Download, Loader2 } from "lucide-react";
@@ -57,7 +58,7 @@ export default function Confirm() {
             </div>
           </div>
           <p className="mt-7 font-serif text-[17px] leading-relaxed text-ink/80">
-            Confirm this address to save your webinar seat. Your private Zoom details will be sent once you confirm.
+            Confirm this address to save your seat for Finding the Gap. Your private Zoom details and registration gift will be sent once you confirm.
           </p>
           <Button
             type="button"
@@ -118,6 +119,25 @@ export default function Confirm() {
               ? "Your Zoom details are being sent to your inbox. Save that message so you can join us live."
               : "Your resource is on its way to your inbox. If it has not arrived in a few minutes, please check your spam folder."}
         </p>
+        {isNovember17 ? (
+          <div className="mt-7 border border-gold bg-gold-tint p-6">
+            <p className="font-sans text-[10px] font-bold uppercase tracking-[0.18em] text-gold-dark">
+              Your registration gift
+            </p>
+            <h4 className="mt-2 font-display text-lg font-bold text-navy">
+              {REGISTRATION_GIFT.title}
+            </h4>
+            <p className="mt-2 font-serif text-[15px] leading-relaxed text-ink/75">
+              This five-minute exercise will help you begin identifying which business gap may need your attention first.
+            </p>
+            <Button asChild className="mt-4 bg-ink text-gold hover:bg-ink/90">
+              <a href={REGISTRATION_GIFT.url} download={REGISTRATION_GIFT.filename}>
+                <Download className="mr-2 size-4" />
+                Download your clarity exercise
+              </a>
+            </Button>
+          </div>
+        ) : null}
         {/* Legacy resource is for the original event only. */}
         {!currentSession ? (<>
         <div className="mt-7 space-y-3">
@@ -170,9 +190,9 @@ export default function Confirm() {
                 Come ready to discover your next step.
               </p>
               <p className="mt-3 font-serif text-[16px] leading-relaxed text-ink/75">
-                During our webinar, we'll explore the eight essential business systems,
-                identify where your business needs attention, and choose one practical
-                action for the next 30 days. Bring a notebook and your questions.
+                During Finding the Gap, we'll explore four common business gaps: Direction,
+                Offer, Audience, and Structure. You'll identify what may need attention
+                first and choose one practical next step. Bring a notebook and your questions.
               </p>
             </div>
           </>

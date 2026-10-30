@@ -12,15 +12,16 @@ function buildChatContext(event: PublicEvent): string {
   const scheduled = !isPlaceholder(event.date);
   return [
     "KINGDOM SOLUTIONS AI WEBINAR",
-    "Title: What Entrepreneurs Need to Know — How to Build in the Right Order.",
+    "Title: Finding the Gap — Build in the Right Order.",
     "Host: Tabitha Rector, Founder of Kingdom Solutions AI.",
     "Audience: experienced entrepreneurs and professionals building a business from their expertise.",
     scheduled
       ? `Next live workshop: ${event.date} at ${isPlaceholder(event.time) ? "time to be announced" : event.time + " Eastern Time"}. ${isPlaceholder(event.duration) ? "" : "Duration: " + event.duration + "."} Registration is on this page.`
       : "The next live date will be announced on this page.",
-    "Core promise: begin with the Direction gap, recognize the Offer, Audience, and Structure gaps, identify the leading gap in your own business, and choose one specific next action. The eight business systems are supporting context, not the main teaching.",
+    "Core promise: help experienced women identify whether Direction, Offer, Audience, or Structure is holding their business back, then choose one practical next step. Build in the Right Order is the method.",
     "What participants do: reflect on the places their effort is not producing results, test their likely starting gap, and choose one practical action. AI supports processes while people retain authority.",
     "Reason to attend live: a guided starting-point exercise, live Q&A, and a First-Sale Readiness Checklist thank-you gift for people who attend.",
+    "Registration gift: a free five-minute business-gap clarity exercise, delivered by email after confirmation.",
     "Registration: first name, last name, email address. Email confirmation is required. Private Zoom details are delivered only after confirmation. Previous webinars do not automatically register someone for this one.",
     "This is a business-building webinar, NOT a book promotion. The book is a separate resource; do not promise a free book or chapter when someone registers for the webinar.",
     "Avoid promising guaranteed sales, earnings, or business outcomes. The workshop is educational, not legal, tax, or financial advice.",
@@ -107,17 +108,18 @@ export default function Home() {
                 GET 2027 READY! · Live business-building webinar
               </p>
               <h1 className="mt-7 max-w-2xl font-display text-[40px] font-bold leading-[1.1] tracking-[-0.02em] text-white sm:text-5xl xl:text-[57px]">
-                What Entrepreneurs <span className="text-gold">Need to Know</span>
+                Finding <span className="text-gold">the Gap</span>
               </h1>
               <p className="mt-5 max-w-xl font-display text-2xl font-medium leading-snug text-white sm:text-[31px]">
-                Find the Gap. Build in the Right Order.
+                Identify what needs attention first. Build in the right order.
               </p>
               <GoldRule className="mt-7" />
               <p className="mt-7 max-w-xl font-serif text-[19px] leading-[1.65] text-white/85">
-                You have experience, ideas, and a desire to build something meaningful. Maybe you've
-                started already, but the results still do not match the work. Or maybe you cannot
-                decide where to begin. We will start with the Direction gap, then look at Offer,
-                Audience, and Structure so you can see what really needs attention first.
+                You have experience and gifts worth sharing. But you may be working hard,
+                trying new strategies, and wondering why your business still isn't coming together.
+                Your next step may not be more effort. Together we'll explore four common
+                business gaps: Direction, Offer, Audience, and Structure, so you can recognize
+                what deserves attention first.
               </p>
               {!isWaitlist && !isLoading ? (
                 <div className="mt-8 grid gap-5 sm:grid-cols-2">
@@ -158,7 +160,7 @@ export default function Home() {
                 <p className="mt-2 font-serif text-[15px] leading-relaxed text-white/70">
                   {isWaitlist
                     ? "Leave your details to hear when the next live workshop is announced."
-                    : "Register below. Confirm your email to receive your private Zoom details."}
+                    : "Register below. Confirm your email to receive your private Zoom details and free five-minute clarity exercise."}
                 </p>
               </div>
               {isLoading ? (

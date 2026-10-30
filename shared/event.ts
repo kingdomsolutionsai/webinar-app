@@ -234,7 +234,7 @@ export const CORE_PROMISE =
 
 /** The short form, used where the long sentence would crowd the layout. */
 export const CORE_PROMISE_SHORT =
-  "Set it up right on day one, and you never pay twice for the same mistake.";
+  "Find the right gap first. Then build in the right order.";
 
 /**
  * The one-sentence exercise from the close of the session — approved wording.

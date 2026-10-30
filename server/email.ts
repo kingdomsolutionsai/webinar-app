@@ -111,7 +111,7 @@ export function buildConfirmEmail(input: {
   <tr><td style="padding:30px 36px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${C.gold};background-color:${C.goldTint};">
       <tr><td style="padding:26px 28px;text-align:center;">
-        <p style="margin:0 0 18px;font-family:${DISPLAY};font-size:18px;line-height:1.3;font-weight:700;color:${C.navy};">${input.sessionOnly ? "What Entrepreneurs Need to Know — How to Build in the Right Order" : escapeHtml(SAMPLE_CHAPTER.title)}</p>
+        <p style="margin:0 0 18px;font-family:${DISPLAY};font-size:18px;line-height:1.3;font-weight:700;color:${C.navy};">${input.sessionOnly ? "Finding the Gap — Build in the Right Order" : escapeHtml(SAMPLE_CHAPTER.title)}</p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
           <tr><td style="background-color:${C.ink};">
             <a href="${input.confirmUrl}" style="display:inline-block;padding:14px 30px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:${C.gold};text-decoration:none;">Confirm my email</a>
@@ -698,7 +698,7 @@ export function buildSessionConfirmationEmail(input: {
     : [];
   return {
     subject: `Your seat is confirmed: ${when}`,
-    html: `<div style="font:17px/1.7 Georgia,serif;padding:28px"><h2>What Entrepreneurs Need to Know</h2><h3>How to Build in the Right Order</h3><p>Welcome, ${name}. Your seat is confirmed.</p>${input.seat?.html ?? "<p>Watch your inbox for event details.</p>"}${giftHtml}<p>We look forward to seeing you live.</p><p>Tabitha Rector<br>Kingdom Solutions AI™</p><p><a href="${escapeHtml(input.unsubscribeUrl ?? "#")}">Unsubscribe</a></p></div>`,
+    html: `<div style="font:17px/1.7 Georgia,serif;padding:28px"><h2>Finding the Gap</h2><h3>Build in the Right Order</h3><p>Welcome, ${name}. Your seat is confirmed.</p>${input.seat?.html ?? "<p>Watch your inbox for event details.</p>"}${giftHtml}<p>We look forward to seeing you live.</p><p>Tabitha Rector<br>Kingdom Solutions AI™</p><p><a href="${escapeHtml(input.unsubscribeUrl ?? "#")}">Unsubscribe</a></p></div>`,
     text: [
       `Your seat is confirmed for ${when}.`,
       ...(input.seat?.text ?? []),
