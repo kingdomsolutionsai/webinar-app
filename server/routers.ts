@@ -10,6 +10,7 @@ import {
   MAIL_OWNER,
   PUBLIC_URL_KEY,
   resolveEmailBaseUrl,
+  registrationGiftUrlFor,
 } from "../shared/event";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -272,6 +273,7 @@ export const appRouter = router({
                 trackedUrls: trackedUrlsFor(baseUrl, row.email),
                 seat: seatFor(stored),
                 sessionOnly: Boolean(input.sessionKey),
+                registrationGiftUrl: registrationGiftUrlFor(input.sessionKey, baseUrl),
               });
               if (!input.sessionKey) await setRegistrationEmailStatus(
                 row.email,

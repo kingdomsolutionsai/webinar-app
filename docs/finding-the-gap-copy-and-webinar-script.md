@@ -36,14 +36,14 @@ The method is **Find the gap → Close the right gap → Build what's next**. "B
 3. Leave with one practical next action, grounded in wise stewardship of your time, capacity, and gifts.
 
 **Two gifts:**
-- After email confirmation: Chapter One (Part One) of the Entrepreneur Handbook. Only the chapter, never the complete paid Handbook.
+- After email confirmation: Finding Your Business Gap: A 5-Minute Clarity Exercise.
 - After verified live attendance: First-Sale Readiness Checklist.
 
 **Trust:** Led by Tabitha Rector, PCC, with more than 30 years in banking, lending, business advisory, sales, marketing, and coaching; experience coaching teams and helping bank branches generate millions of dollars. Avoid invented client testimonials or quantified client claims.
 
 **CTA:** Reserve my free seat.
 
-**Confirmation step:** Please confirm your email to save your seat. Your Chapter One gift and private Zoom details arrive after confirmation. Previous webinar registrations do not automatically register you for this session.
+**Confirmation step:** Please confirm your email to save your seat. Your Business Gap Clarity Exercise and private Zoom details arrive after confirmation. Previous webinar registrations do not automatically register you for this session.
 
 ## 3. Funnel email copy (editorial source of truth)
 
@@ -67,7 +67,7 @@ Tabitha Rector
 Kingdom Solutions AI™ by Revived Spirit
 
 ### Email 2 — welcome, gift, and Zoom (immediately after confirmation)
-**Subject:** You're confirmed! Your Chapter One gift and Zoom details are here
+**Subject:** You're confirmed! Your Business Gap Clarity Exercise and Zoom details are here
 
 Hello [First Name],
 
@@ -75,9 +75,9 @@ Your seat is confirmed for Finding the Gap. I'm so glad you'll be with us.
 
 Whether you're launching, rebuilding, or wondering why all your effort isn't translating into progress, please come without pressure to have all the answers. You are dearly loved, and your experience matters.
 
-**Your first thank-you gift:** Chapter One of my Entrepreneur Handbook.
+**Your first thank-you gift:** Finding Your Business Gap: A 5-Minute Clarity Exercise.
 
-[Download Chapter One]
+[Download the Business Gap Clarity Exercise]
 
 **Your live session:** Tuesday, November 17, 2026, at 11:00 a.m. Eastern.
 
@@ -308,7 +308,7 @@ Invite questions for the remaining time. If it fits Tabitha's delivery style, of
 ## 6. Implementation and testing checklist
 
 - [ ] Keep November 17 date, start time, Zoom meeting, and double opt-in flow intact.
-- [ ] Deliver Chapter One and the verified Zoom link in Email 2 after confirmation.
+- [ ] Deliver the Business Gap Clarity Exercise and the verified Zoom link in Email 2 after confirmation.
 - [ ] Give each link reminder the verified Zoom URL, meeting ID, and passcode.
 - [ ] Send the day-before, 60-minute, and 15-minute reminders only to the November 17 confirmed audience.
 - [ ] Verify the session-specific Brevo list exists and contains the expected confirmed contacts.

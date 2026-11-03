@@ -1,26 +1,26 @@
+import { REGISTRATION_GIFT, registrationGiftUrlFor } from "../shared/event";
 import { describe, expect, it } from "vitest";
-import { buildRegistrantEmail } from "./email";
+import { buildSessionConfirmationEmail } from "./email";
 import { planEventCampaigns, syncRegistrantToBrevo, type BrevoIO } from "./brevo";
 import { buildFifteenBeforeReminder } from "./reminders";
 
 const start = new Date("2026-11-17T16:00:00.000Z"); // 11 AM EST
 
 describe("Finding the Gap funnel", () => {
-  it("includes the chapter gift and Zoom details in the post-confirmation email", () => {
-    const message = buildRegistrantEmail({
+  it("includes the Business Gap Clarity Exercise and Zoom details in the post-confirmation email", () => {
+    const message = buildSessionConfirmationEmail({
       firstName: "Example",
-      baseUrl: "https://whatentrepreneursneedtoknow.com",
-      sessionOnly: true,
-      trackedUrls: { chapter: "https://whatentrepreneursneedtoknow.com/api/download?r=chapter&test=1" },
+      registrationGiftUrl: registrationGiftUrlFor("2026-11-17", "https://example.test"),
       seat: {
         when: "Tuesday, November 17, 2026 at 11 AM Eastern",
         html: "<tr><td>Join on Zoom: https://zoom.example/j/1234567890</td></tr>",
         text: ["Join on Zoom: https://zoom.example/j/1234567890"],
       },
     });
-    expect(message.subject).toContain("Zoom link and gift");
+    expect(message.text).toContain(REGISTRATION_GIFT.url);
     expect(message.html).toContain("Finding the Gap");
-    expect(message.html).toContain("Download Part One");
+    expect(message.html).toContain(REGISTRATION_GIFT.title);
+    expect(message.html).not.toContain("Download Part One");
     expect(message.html).toContain("https://zoom.example/j/1234567890");
     expect(message.html).not.toContain("Download the First-Sale Readiness Checklist");
   });
@@ -51,11 +51,13 @@ describe("Finding the Gap funnel", () => {
       },
       start,
     });
+    expect(campaigns.find(c => c.key === "reminder-day")?.at.toISOString()).toBe("2026-11-16T16:00:00.000Z");
+    expect(campaigns.find(c => c.key === "reminder-hour")?.at.toISOString()).toBe("2026-11-17T15:00:00.000Z");
     const last = campaigns.find(campaign => campaign.key === "reminder-fifteen");
     expect(last).toBeDefined();
     expect(last!.at.toISOString()).toBe("2026-11-17T15:45:00.000Z");
     expect(last!.html).toContain("https://us06web.zoom.us/j/1234567890");
-    expect(campaigns.some(campaign => campaign.key === "reminder-ten")).toBe(false);
+    expect(campaigns.some(campaign => campaign.key.toString() === "reminder-ten")).toBe(false);
   });
   it("never syncs a new session contact to the legacy audience when its list is missing", async () => {
     const io: BrevoIO = {

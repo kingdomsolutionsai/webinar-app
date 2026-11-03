@@ -3,7 +3,7 @@
 
 **Kingdom Solutions AI™ by Revived Spirit**  
 **Working subtitle:** What's Keeping Your Business From Moving Forward?  
-**Presenter:** Tabitha Rector, PCC  
+**Presenter:** Tabitha Rector, certified professional coach  
 **Audience:** Experienced Christian women entrepreneurs  
 **Method:** Build in the Right Order  
 **Teaching:** 45 minutes, followed by up to 15 minutes of Q&A
@@ -12,8 +12,8 @@ This is a **first complete speaking draft** for rehearsal. The time blocks combi
 
 ### Before you go live
 
-- Show the registration-only attendee checklist offer after the relevant teaching, never as a generic signup gift.
-- Keep Chapter One of the Handbook as the post-confirmation gift.
+- Introduce the First-Sale Readiness Checklist during the webinar and deliver it only to verified live attendees.
+- Keep the five-minute Business Gap Clarity Exercise as the post-confirmation gift.
 - Keep the live November 17 date and Zoom connection separate from the gated replay.
 - Place your Strategy Call link visibly in the webinar chat at the Fast Track invitation.
 - Have the slide deck in presenter view with these notes visible to you, while Zoom shares slides only.

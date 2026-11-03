@@ -20,9 +20,9 @@ function buildChatContext(event: PublicEvent): string {
       : "The next live date will be announced on this page.",
     "Core promise: help attendees recognize a possible business gap and leave with one clear next action. The full teaching is shared during the live workshop.",
     "What participants do: reflect on where their effort is not producing results and identify a practical starting point. AI may support processes, with human authority throughout.",
-    "Two distinct gifts: after email confirmation, Part One of Tabitha’s Entrepreneur Handbook; after live attendance, the First-Sale Readiness Checklist. Live Q&A is included.",
+    "Two distinct gifts: after email confirmation, the five-minute Business Gap Clarity Exercise; after live attendance, the First-Sale Readiness Checklist. Live Q&A is included.",
     "Registration: first name, last name, email address. Email confirmation is required. Private Zoom details are delivered only after confirmation. Previous webinars do not automatically register someone for this one.",
-    "This is a faith-rooted business webinar, not a book promotion. Chapter One is a signup thank-you; the complete Handbook remains a separate paid resource. Do not teach the full method in chat.",
+    "This is a faith-rooted business webinar, not a book promotion. Do not teach the full method in chat.",
     "Avoid promising guaranteed sales, earnings, or business outcomes. The workshop is educational, not legal, tax, or financial advice.",
     "Answer warmly and briefly. Invite the visitor to use the form. For questions not addressed here, email tabitha@kingdomsolutionsai.com.",
   ].join("\n");
@@ -159,7 +159,7 @@ export default function Home() {
                 <p className="mt-2 font-serif text-[15px] leading-relaxed text-white/70">
                   {isWaitlist
                     ? "Leave your details to hear when the next live workshop is announced."
-                    : "Register below. Confirm your email to receive Chapter One of my Handbook and your private Zoom details."}
+                    : "Register and confirm your email to receive your private Zoom details and a free 5-Minute Business Gap Clarity Exercise. Attend live to receive the First-Sale Readiness Checklist as my thank-you."}
                 </p>
               </div>
               {isLoading ? (
@@ -240,7 +240,7 @@ export default function Home() {
                 <h2 className="font-display text-2xl font-bold text-ink">Why attend live?</h2>
               </div>
               <p className="mt-3 font-serif text-[17px] leading-relaxed text-ink/75">
-                After confirming your registration, receive Chapter One of my Entrepreneur Handbook.
+                After confirming your registration, receive the five-minute Business Gap Clarity Exercise.
                 Then join me live for a guided gap-identification exercise and Q&A. Women who
                 attend live also receive my First-Sale Readiness Checklist. If you want guided
                 implementation, I will explain my 30-Day Business Fast Track™, starting soon.
