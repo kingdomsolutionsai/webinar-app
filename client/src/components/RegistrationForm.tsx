@@ -40,12 +40,18 @@ export function RegistrationForm({
   // yet at this point — only the confirmation email has — so this screen asks
   // for a click on that link rather than offering a download.
   const [confirmedName, setConfirmedName] = useState<string | null>(null);
+  const [confirmationEmailFailed, setConfirmationEmailFailed] = useState(false);
   // Only one free resource is offered at signup now, so this is fixed rather
   // than a visitor choice. The Readiness Checklist is a separate reward,
   // handed out only to people who attend the live session.
   const resource: ResourceId = "chapter";
   const register = trpc.registration.create.useMutation({
     onSuccess: data => {
+      if (!data.emailed) {
+        setConfirmationEmailFailed(true);
+        return;
+      }
+      setConfirmationEmailFailed(false);
       setConfirmedName(data.firstName);
     },
   });
@@ -66,6 +72,7 @@ export function RegistrationForm({
     setErrors(found);
     setTouched({ firstName: true, lastName: true, email: true });
     if (Object.keys(found).length > 0) return;
+    setConfirmationEmailFailed(false);
     register.mutate({
       firstName: values.firstName.trim(),
       lastName: values.lastName.trim(),
@@ -167,6 +174,12 @@ export function RegistrationForm({
             <span className="font-semibold text-navy">
               {THREE_TRACKS.find(item => item.id === track)?.label}
             </span>
+          </p>
+        ) : null}
+        {confirmationEmailFailed ? (
+          <p role="alert" className="flex items-start gap-2 border border-destructive/40 bg-destructive/5 p-3 font-sans text-[13px] text-destructive">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            Your registration was saved, but the confirmation email could not be sent. Please try again or email tabitha@kingdomsolutionsai.com for help.
           </p>
         ) : null}
         {register.isError ? (

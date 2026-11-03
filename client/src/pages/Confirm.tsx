@@ -114,7 +114,7 @@ export default function Confirm() {
         <div className="mt-7 h-[3px] w-14 bg-gold" />
         <p className="mt-7 font-serif text-[17px] leading-relaxed text-ink/80">
           {isNovember17
-            ? "Your seat for Tuesday, November 17 is confirmed. Your private Zoom details are being sent to your inbox. Save that email so you can join us live."
+            ? "Your seat for Tuesday, November 17 is confirmed. Your private Zoom details and five-minute Business Gap Clarity Exercise are being sent to your inbox. Save that email so you can join us live."
             : currentSession
               ? "Your Zoom details are being sent to your inbox. Save that message so you can join us live."
               : "Your resource is on its way to your inbox. If it has not arrived in a few minutes, please check your spam folder."}

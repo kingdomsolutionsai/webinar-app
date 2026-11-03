@@ -309,3 +309,38 @@ export function buildHourBeforeReminder(ctx: ReminderContext) {
     text,
   };
 }
+
+/** Final reminder: fifteen minutes before the session. */
+export function buildFifteenBeforeReminder(ctx: ReminderContext) {
+  const clock = formatEasternClock(ctx.start);
+  const body = [
+    paragraph(`${escapeHtml(ctx.firstName)}, we begin in fifteen minutes. I am looking forward to welcoming you. You do not need to have everything figured out before you come.`),
+    buttonRow("Join the webinar now", ctx.joinUrl),
+    zoomDetails(ctx),
+    paragraph("If the link gives you trouble, open Zoom and enter the meeting ID and passcode above. Bring a notebook and a little breathing room."),
+  ].join("");
+
+  const text = [
+    `${ctx.firstName}, we begin in fifteen minutes at ${clock}. You do not need to have everything figured out before you come.`,
+    "",
+    `Join the webinar now: ${ctx.joinUrl}`,
+    ...zoomDetailsText(ctx),
+    "",
+    "Bring a notebook. I look forward to seeing you.",
+    ...signOffText(ctx),
+  ].join("\n");
+
+  return {
+    subject: "We begin in 15 minutes: your Zoom link is here",
+    html: shell({
+      preheader: "Come as you are. Join the live session in a few minutes.",
+      heading: "Your place is ready.",
+      bodyHtml: body,
+      baseUrl: ctx.baseUrl,
+      logoUrl: ctx.logoUrl,
+      unsubscribeUrl: ctx.unsubscribeUrl,
+      footerNote: FOOTER,
+    }),
+    text,
+  };
+}
