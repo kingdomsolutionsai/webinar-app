@@ -20,7 +20,7 @@ export function LionMark({
   return (
     <img
       src={LION_MARK}
-      alt="Kingdom Solutions AI"
+      alt="Kingdom Solutions Business & AI"
       width={size}
       height={size}
       style={{ width: size, height: size }}
