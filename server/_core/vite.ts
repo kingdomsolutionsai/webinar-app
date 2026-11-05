@@ -6,6 +6,19 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
+// Keep confirmation links and private or administrative routes out of search.
+function withRouteSeo(html: string, requestUrl: string): string {
+  const requestPath = requestUrl.split("?")[0];
+  const path = requestPath.endsWith("/") && requestPath !== "/"
+    ? requestPath.slice(0, -1)
+    : requestPath;
+  if (path === "/") return html;
+  return html.replace(
+    "</head>",
+    '    <meta name="robots" content="noindex, nofollow" />\n  </head>'
+  );
+}
+
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
@@ -38,7 +51,7 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`
       );
-      const page = await vite.transformIndexHtml(url, template);
+      const page = withRouteSeo(await vite.transformIndexHtml(url, template), url);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
@@ -58,10 +71,11 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, { index: false }));
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  app.use("*", (req, res) => {
+    const rawHtml = fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8");
+    res.status(200).set({ "Content-Type": "text/html" }).end(withRouteSeo(rawHtml, req.originalUrl));
   });
 }
