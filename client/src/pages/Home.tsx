@@ -11,9 +11,9 @@ type PublicEvent = { date: string; time: string; duration: string; price: string
 function buildChatContext(event: PublicEvent): string {
   const scheduled = !isPlaceholder(event.date);
   return [
-    "KINGDOM SOLUTIONS AI WEBINAR",
+    "KINGDOM SOLUTIONS BUSINESS & AI WEBINAR",
     "Title: Finding the Gap — What Is Keeping Your Business From Moving Forward?",
-    "Host: Tabitha Rector, Founder of Kingdom Solutions AI by Revived Spirit.",
+    "Host: Tabitha Rector, Founder of Kingdom Solutions Business & AI.",
     "Audience: experienced Christian women entrepreneurs who want to steward their skills, gifts, and calling with clarity.",
     scheduled
       ? `Next live workshop: ${event.date} at ${isPlaceholder(event.time) ? "time to be announced" : event.time + " Eastern Time"}. ${isPlaceholder(event.duration) ? "" : "Duration: " + event.duration + "."} Registration is on this page.`
@@ -83,7 +83,7 @@ export default function Home() {
             <LionMark size={44} />
             <div>
               <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">
-                Kingdom Solutions AI™
+                Kingdom Solutions Business & AI™
               </p>
               <p className="mt-1 font-serif text-[13px] text-white/70">
                 Clarity before complexity. Capacity before scale.
@@ -138,7 +138,7 @@ export default function Home() {
                   <ArrowRight className="ml-2 size-4" />
                 </Button>
                 <p className="max-w-[220px] font-serif text-[14px] leading-relaxed text-white/65">
-                  Led by Tabitha Rector, PCC · Kingdom Solutions AI™ by Revived Spirit
+                  Led by Tabitha Rector, PCC · Kingdom Solutions Business & AI™
                 </p>
               </div>
               <div className="mt-9 flex items-center gap-3 border-t border-gold/20 pt-6">
@@ -263,7 +263,7 @@ export default function Home() {
               “Clarity before complexity. Capacity before scale. Human authority throughout.”
             </p>
             <p className="mt-5 font-sans text-[11px] uppercase tracking-[0.15em] text-gold">
-              Tabitha Rector · Kingdom Solutions AI™ by Revived Spirit
+              Tabitha Rector · Kingdom Solutions Business & AI™
             </p>
             <p className="mt-7 font-serif text-[13px] leading-relaxed text-white/45">
               Educational content. Not legal, tax, or financial advice. No guaranteed business results.
