@@ -6,15 +6,16 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
-// Only the public webinar landing page should be indexed. Confirmation links,
- // owner dashboards, feedback forms, and unsubscribe URLs can contain personal
- // or tokenized details and should not appear in search results.
+// Keep confirmation links and private or administrative routes out of search.
 function withRouteSeo(html: string, requestUrl: string): string {
-  const path = requestUrl.split("?")[0].replace(/\\/$/, "") || "/";
+  const requestPath = requestUrl.split("?")[0];
+  const path = requestPath.endsWith("/") && requestPath !== "/"
+    ? requestPath.slice(0, -1)
+    : requestPath;
   if (path === "/") return html;
   return html.replace(
-    /<\\/head>/,
-    '    <meta name="robots" content="noindex, nofollow" />\\n  </head>'
+    "</head>",
+    '    <meta name="robots" content="noindex, nofollow" />\n  </head>'
   );
 }
 
