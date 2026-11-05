@@ -6,6 +6,18 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
+// Only the public webinar landing page should be indexed. Confirmation links,
+ // owner dashboards, feedback forms, and unsubscribe URLs can contain personal
+ // or tokenized details and should not appear in search results.
+function withRouteSeo(html: string, requestUrl: string): string {
+  const path = requestUrl.split("?")[0].replace(/\\/$/, "") || "/";
+  if (path === "/") return html;
+  return html.replace(
+    /<\\/head>/,
+    '    <meta name="robots" content="noindex, nofollow" />\\n  </head>'
+  );
+}
+
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
@@ -38,7 +50,7 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`
       );
-      const page = await vite.transformIndexHtml(url, template);
+      const page = withRouteSeo(await vite.transformIndexHtml(url, template), url);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
@@ -58,10 +70,11 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, { index: false }));
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  app.use("*", (req, res) => {
+    const rawHtml = fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8");
+    res.status(200).set({ "Content-Type": "text/html" }).end(withRouteSeo(rawHtml, req.originalUrl));
   });
 }
