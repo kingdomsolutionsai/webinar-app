@@ -691,10 +691,10 @@ export function buildSessionConfirmationEmail(input: {
   const when = input.seat?.when ?? "the next webinar";
   const giftUrl = input.registrationGiftUrl ? escapeHtml(input.registrationGiftUrl) : undefined;
   const giftHtml = giftUrl
-    ? `<div style="margin:26px 0;padding:22px;border:1px solid ${C.gold};background:${C.goldTint}"><p style="margin:0 0 6px;font-family:${SANS};font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:#9A7B12">Your registration gift</p><h3 style="margin:0 0 12px;font-family:${DISPLAY};font-size:20px;line-height:1.35;color:${C.navy}">${escapeHtml(REGISTRATION_GIFT.title)}</h3><p style="margin:0 0 16px">Use this five-minute exercise before we meet to identify whether Direction, Offer, Audience, or Structure needs your attention first.</p><a href="${giftUrl}" style="display:inline-block;padding:13px 20px;background:${C.ink};color:${C.gold};font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;text-decoration:none">Download the clarity exercise</a></div>`
+    ? `<div style="margin:26px 0;padding:22px;border:1px solid ${C.gold};background:${C.goldTint}"><p style="margin:0 0 6px;font-family:${SANS};font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:#9A7B12">Your registration gift</p><h3 style="margin:0 0 12px;font-family:${DISPLAY};font-size:20px;line-height:1.35;color:${C.navy}">${escapeHtml(REGISTRATION_GIFT.title)}</h3><p style="margin:0 0 16px">Use this five-minute exercise before we meet to identify whether Direction, Offer, Audience, or Structure needs your attention first.</p><a href="${giftUrl}" style="display:inline-block;padding:13px 20px;background:${C.ink};color:${C.gold};font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;text-decoration:none">Open Your Clarity Exercise</a><p style="margin:12px 0 0;font-size:14px;color:${C.muted}">Opens in your browser so you can read it right away. Saving a copy is optional.</p></div>`
     : "";
   const giftText = giftUrl
-    ? [``, `YOUR REGISTRATION GIFT`, REGISTRATION_GIFT.title, `Download: ${input.registrationGiftUrl}`]
+    ? [``, `YOUR REGISTRATION GIFT`, REGISTRATION_GIFT.title, `Open your clarity exercise: ${input.registrationGiftUrl}`, `The PDF opens in your browser. Saving a copy is optional.`]
     : [];
   return {
     subject: `Your seat is confirmed: ${when}`,

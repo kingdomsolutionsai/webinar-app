@@ -131,11 +131,14 @@ export default function Confirm() {
               This five-minute exercise will help you begin identifying which business gap may need your attention first.
             </p>
             <Button asChild className="mt-4 bg-ink text-gold hover:bg-ink/90">
-              <a href={REGISTRATION_GIFT.url} download={REGISTRATION_GIFT.filename}>
-                <Download className="mr-2 size-4" />
-                Download your clarity exercise
+              <a href={REGISTRATION_GIFT.url} target="_blank" rel="noopener noreferrer">
+                <BookOpen className="mr-2 size-4" />
+                Open Your Clarity Exercise
               </a>
             </Button>
+            <p className="mt-3 font-serif text-[13px] leading-relaxed text-ink/65">
+              Opens right away in your browser. No need to find a download in your files. Save a copy only if you want to.
+            </p>
           </div>
         ) : null}
         {/* Legacy resource is for the original event only. */}

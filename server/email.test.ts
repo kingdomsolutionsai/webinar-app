@@ -290,6 +290,10 @@ describe("the email sent after someone confirms, once a session is set", () => {
     expect(mail.html).toContain(REGISTRATION_GIFT.title);
     expect(mail.html).toContain(giftUrl);
     expect(mail.text).toContain(giftUrl);
+    expect(mail.html).toContain("Open Your Clarity Exercise");
+    expect(mail.html).toContain("Saving a copy is optional");
+    expect(mail.text).toContain("Open your clarity exercise:");
+    expect(mail.html).not.toContain("Download the clarity exercise");
     expect(mail.html + mail.text).not.toContain(READINESS_CHECKLIST.title);
   });
 
