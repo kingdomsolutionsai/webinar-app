@@ -6,6 +6,7 @@ import {
   conditionalMerge,
   contactPayload,
   planEventCampaigns,
+  requestMarketingConfirmation,
   setupBrevo,
   sendBrevoTests,
   type BrevoIO,
@@ -70,6 +71,9 @@ function fakeBrevo(options: { refuseDelete?: boolean } = {}) {
     if (method === "POST" && path.startsWith("/contacts/attributes/normal/")) {
       attributes.add(path.split("/").pop()!);
       return json(201);
+    }
+    if (method === "POST" && path === "/contacts/doubleOptinConfirmation") {
+      return templates.get(body.templateId)?.tag === "optin" ? json(201) : json(400, { message: "Invalid DOI template" });
     }
     if (method === "POST" && path === "/contacts") {
       const existed = contacts.has(body.email);
@@ -487,4 +491,13 @@ describe("test copies", () => {
     expect(report.results.every(r => r.ok && r.via === "brevo")).toBe(true);
     expect(brevo.tests).toHaveLength(12);
   });
+});
+
+
+it("repairs an existing marketing template before requesting double opt-in", async () => {
+  const brevo = fakeBrevo();
+  brevo.templates.set(345, { tag: "webinar-nurture" });
+  const { io } = makeIO(brevo, { settings: { webinarMarketingList: "43", webinarMarketingTemplate: "345" } });
+  expect(await requestMarketingConfirmation("owner@example.test", Promise.resolve(io))).toBe(true);
+  expect(brevo.templates.get(345)).toMatchObject({ tag: "optin", isActive: true });
 });

@@ -223,11 +223,12 @@ export async function syncFutureRegistration(sessionKey: string, row: {email: st
 async function ensureMarketingSettings(io: BrevoIO, settings: Record<string, string>, folderId: number) {
   const marketingList = await findOrCreateList(io, "Kingdom Solutions Business & AI: Marketing subscribers", folderId);
   const template = await upsertTemplate(io, Number(settings.webinarMarketingTemplate) || undefined, {
-    name: "Kingdom Solutions optional email subscription", subject: "Confirm your subscription to Kingdom Solutions Business & AI",
-    html: '<p>You asked to receive ongoing business tips and offers from Tabitha Rector.</p><p><a href="{{ params.DOIurl }}">Confirm my subscription</a></p><p>Your webinar access and reminders are already included with registration.</p>',
+    tag: "optin", name: "Kingdom Solutions optional email subscription", subject: "Confirm your subscription to Kingdom Solutions Business & AI",
+    html: '<p>You asked to receive ongoing business tips and offers from Tabitha Rector.</p><p><a href="{{ params.DOIurl }}">Confirm my subscription</a></p><p>If you did not request these emails, you can ignore this message.</p>',
   });
   await io.setSetting("webinarMarketingList", String(marketingList));
   await io.setSetting("webinarMarketingTemplate", String(template));
+  await io.setSetting("webinarMarketingOptinTemplate", String(template));
   return { listId: marketingList, templateId: template };
 }
 
@@ -235,12 +236,13 @@ async function ensureMarketingSettings(io: BrevoIO, settings: Record<string, str
 export async function requestMarketingConfirmation(email: string, io = defaultIO()) {
   const client = await io;
   const settings = await client.getSettings();
-  const { listId, templateId } = settings.webinarMarketingList && settings.webinarMarketingTemplate
+  const { listId, templateId } = settings.webinarMarketingList && settings.webinarMarketingTemplate && settings.webinarMarketingOptinTemplate === settings.webinarMarketingTemplate
     ? { listId: Number(settings.webinarMarketingList), templateId: Number(settings.webinarMarketingTemplate) }
     : await ensureMarketingSettings(client, settings, await findOrCreateFolder(client));
   const result = await api(client, "POST", "/contacts/doubleOptinConfirmation", {
     email, includeListIds: [listId], templateId, redirectionUrl: "https://www.kingdomsolutionsai.com/",
   });
+  if (!result.ok) console.error("[Marketing confirmation]", result.error);
   return result.ok;
 }
 
@@ -575,7 +577,7 @@ function resolveBase(settings: Record<string, string>, fallback: string) {
 async function upsertTemplate(
   io: BrevoIO,
   existingId: number | undefined,
-  template: { name: string; subject: string; html: string },
+  template: { name: string; subject: string; html: string; tag?: string },
 ): Promise<number> {
   const body = {
     templateName: template.name,
@@ -584,7 +586,7 @@ async function upsertTemplate(
     sender: SENDER,
     replyTo: MAIL_FROM.email,
     isActive: true,
-    tag: "webinar-nurture",
+    tag: template.tag ?? "webinar-nurture",
   };
   if (existingId) {
     const updated = await api(io, "PUT", `/smtp/templates/${existingId}`, body);
