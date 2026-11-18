@@ -48,6 +48,69 @@ export async function downloadHandler(req: Request, res: Response) {
 }
 
 /**
+ * Emergency November 18, 2026 webinar-email hold, authorized by the owner
+ * on November 17 because the replay is not ready.
+ *
+ * This only suspends queued Brevo marketing campaigns scheduled for November 18
+ * in America/New_York and identifiable as webinar emails. It never changes
+ * transactional opt-in or confirmation emails, other campaigns, or future dates.
+ * The retired Render cron invokes it every hour until the target day ends.
+ */
+async function holdNov18WebinarCampaigns() {
+  const key = process.env.BREVO_API_KEY;
+  if (!key) throw new Error("Brevo API key missing; unable to hold webinar campaigns");
+  const start = Date.parse("2026-11-18T05:00:00.000Z");
+  const end = Date.parse("2026-11-19T05:00:00.000Z");
+  const base = "https://api.brevo.com/v3/emailCampaigns";
+  const headers = { "api-key": key, Accept: "application/json" };
+  const suspended: number[] = [];
+  const failed: { id: number; reason: string }[] = [];
+  const otherTomorrow: { id: number; name: string }[] = [];
+  let scanned = 0;
+  let matched = 0;
+  for (let offset = 0; offset < 1000; offset += 100) {
+    const response = await fetch(base + "?status=queued&limit=100&offset=" + offset + "&excludeHtmlContent=true", { headers });
+    if (!response.ok) throw new Error("Brevo queued campaign scan returned " + response.status);
+    const payload = await response.json() as { campaigns?: Array<{ id: number; name?: string; subject?: string; scheduledAt?: string; status?: string }> };
+    if (!Array.isArray(payload.campaigns)) throw new Error("Brevo returned no campaign array");
+    for (const campaign of payload.campaigns) {
+      scanned++;
+      const at = Date.parse(campaign.scheduledAt || "");
+      if (!Number.isFinite(at) || at < start || at >= end) continue;
+      const name = campaign.name || "";
+      const subject = campaign.subject || "";
+      const isWebinar = /WENTK|Finding\\s+the\\s+Gap|What\\s+Entrepreneurs\\s+Need\\s+to\\s+Know|webinar|replay/i.test(name + " " + subject);
+      if (!isWebinar) {
+        otherTomorrow.push({ id: campaign.id, name });
+        continue;
+      }
+      matched++;
+      const put = await fetch(base + "/" + campaign.id + "/status", {
+        method: "PUT",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "suspended" }),
+      });
+      if (!put.ok) {
+        failed.push({ id: campaign.id, reason: "suspend HTTP " + put.status });
+        continue;
+      }
+      const check = await fetch(base + "/" + campaign.id + "?excludeHtmlContent=true", { headers });
+      if (!check.ok) {
+        failed.push({ id: campaign.id, reason: "verification HTTP " + check.status });
+        continue;
+      }
+      const confirmed = await check.json() as { status?: string };
+      if (confirmed.status === "suspended") suspended.push(campaign.id);
+      else failed.push({ id: campaign.id, reason: "verification status " + String(confirmed.status) });
+    }
+    if (payload.campaigns.length < 100) break;
+  }
+  const result = { scanned, matched, suspended, failed, otherTomorrow };
+  console.log("[Nov 18 webinar email hold]", JSON.stringify(result));
+  return result;
+}
+
+/**
  * POST /api/scheduled/sequence: the Render cron job calls this hourly. Retired.
  *
  * Cron-only: the body is attacker-controllable, so nothing in it is trusted, and
@@ -64,9 +127,15 @@ export async function sequenceHandler(req: Request, res: Response) {
       return res.status(403).json({ error: "cron-only" });
     }
 
-    // The follow-up letters and reminders are sent by Brevo now. This endpoint
-    // stays so the Render cron job does not report failures, but it sends
-    // nothing: sending here as well would email people twice.
+    // Brevo, not this retired job, schedules webinar follow-up emails.
+    // During the one-day owner-authorized hold, inspect and suspend queued
+    // November 18 webinar emails before the next scheduled send.
+    const now = Date.now();
+    if (now >= Date.parse("2026-11-17T20:00:00.000Z") &&
+        now < Date.parse("2026-11-19T05:00:00.000Z")) {
+      const held = await holdNov18WebinarCampaigns();
+      return res.json({ ok: held.failed.length === 0, handedToBrevo: true, sent: 0, held });
+    }
     return res.json({ ok: true, handedToBrevo: true, sent: 0 });
   } catch (error) {
     // JSON-encoded so the platform's Investigate view shows something useful
