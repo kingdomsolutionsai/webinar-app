@@ -68,18 +68,24 @@ async function holdNov18WebinarCampaigns() {
   const otherTomorrow: { id: number; name: string }[] = [];
   let scanned = 0;
   let matched = 0;
+  // Read the entire queue before suspending: suspending while paging would
+  // shift offsets and could skip some of tomorrow's campaigns.
+  const queued: Array<{ id: number; name?: string; subject?: string; scheduledAt?: string; status?: string }> = [];
   for (let offset = 0; offset < 1000; offset += 100) {
     const response = await fetch(base + "?status=queued&limit=100&offset=" + offset + "&excludeHtmlContent=true", { headers });
     if (!response.ok) throw new Error("Brevo queued campaign scan returned " + response.status);
-    const payload = await response.json() as { campaigns?: Array<{ id: number; name?: string; subject?: string; scheduledAt?: string; status?: string }> };
+    const payload = await response.json() as { campaigns?: typeof queued };
     if (!Array.isArray(payload.campaigns)) throw new Error("Brevo returned no campaign array");
-    for (const campaign of payload.campaigns) {
+    queued.push(...payload.campaigns);
+    if (payload.campaigns.length < 100) break;
+  }
+  for (const campaign of queued) {
       scanned++;
       const at = Date.parse(campaign.scheduledAt || "");
       if (!Number.isFinite(at) || at < start || at >= end) continue;
       const name = campaign.name || "";
       const subject = campaign.subject || "";
-      const isWebinar = /WENTK|Finding\\s+the\\s+Gap|What\\s+Entrepreneurs\\s+Need\\s+to\\s+Know|webinar|replay/i.test(name + " " + subject);
+      const isWebinar = /WENTK|Finding\s+the\s+Gap|What\s+Entrepreneurs\s+Need\s+to\s+Know|webinar|replay/i.test(name + " " + subject);
       if (!isWebinar) {
         otherTomorrow.push({ id: campaign.id, name });
         continue;
@@ -103,8 +109,6 @@ async function holdNov18WebinarCampaigns() {
       if (confirmed.status === "suspended") suspended.push(campaign.id);
       else failed.push({ id: campaign.id, reason: "verification status " + String(confirmed.status) });
     }
-    if (payload.campaigns.length < 100) break;
-  }
   const result = { scanned, matched, suspended, failed, otherTomorrow };
   console.log("[Nov 18 webinar email hold]", JSON.stringify(result));
   return result;
