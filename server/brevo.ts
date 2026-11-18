@@ -209,6 +209,41 @@ async function findOrCreateList(io: BrevoIO, name: string, folderId: number): Pr
   return created.data.id;
 }
 
+/** Only the dated event list receives a registration. Never modify the global blocklist. */
+export async function syncFutureRegistration(sessionKey: string, row: {email: string; firstName: string; lastName: string}) {
+  const io = await defaultIO();
+  const folder = await findOrCreateFolder(io);
+  const list = await findOrCreateList(io, `Webinar: ${sessionKey} registrants`, folder);
+  const result = await api(io, "POST", "/contacts", {
+    email: row.email, attributes: { FIRSTNAME: row.firstName, LASTNAME: row.lastName }, listIds: [list], updateEnabled: true,
+  });
+  if (!result.ok) throw new Error(result.error);
+}
+
+async function ensureMarketingSettings(io: BrevoIO, settings: Record<string, string>, folderId: number) {
+  const marketingList = await findOrCreateList(io, "Kingdom Solutions Business & AI: Marketing subscribers", folderId);
+  const template = await upsertTemplate(io, Number(settings.webinarMarketingTemplate) || undefined, {
+    name: "Kingdom Solutions optional email subscription", subject: "Confirm your subscription to Kingdom Solutions Business & AI",
+    html: '<p>You asked to receive ongoing business tips and offers from Tabitha Rector.</p><p><a href="{{ params.DOIurl }}">Confirm my subscription</a></p><p>Your webinar access and reminders are already included with registration.</p>',
+  });
+  await io.setSetting("webinarMarketingList", String(marketingList));
+  await io.setSetting("webinarMarketingTemplate", String(template));
+  return { listId: marketingList, templateId: template };
+}
+
+/** Brevo adds the address to the dedicated marketing list only after the email link is clicked. */
+export async function requestMarketingConfirmation(email: string, io = defaultIO()) {
+  const client = await io;
+  const settings = await client.getSettings();
+  const { listId, templateId } = settings.webinarMarketingList && settings.webinarMarketingTemplate
+    ? { listId: Number(settings.webinarMarketingList), templateId: Number(settings.webinarMarketingTemplate) }
+    : await ensureMarketingSettings(client, settings, await findOrCreateFolder(client));
+  const result = await api(client, "POST", "/contacts/doubleOptinConfirmation", {
+    email, includeListIds: [listId], templateId, redirectionUrl: "https://www.kingdomsolutionsai.com/",
+  });
+  return result.ok;
+}
+
 async function ensureAttributes(io: BrevoIO): Promise<string[]> {
   const existing = await api<{ attributes?: { name: string }[] }>(io, "GET", "/contacts/attributes");
   if (!existing.ok) throw new Error(existing.error);
@@ -641,6 +676,16 @@ export async function setupBrevo(options: { requestOrigin?: string; io?: BrevoIO
 
     // 1. Lists and attributes.
     const folderId = await findOrCreateFolder(io);
+    const futureKey = sessionKeyFor(settings.date);
+    if (futureKey && futureKey > "2026-11-17") {
+      await ensureMarketingSettings(io, settings, folderId);
+      for (const row of await listSessionRegistrations(futureKey)) {
+        await syncFutureRegistration(futureKey, row);
+        report.contacts.synced++;
+      }
+      report.ok = true;
+      return finish(report);
+    }
     const listAll = await findOrCreateList(io, BREVO_LIST_ALL, folderId);
     const listNurture = await findOrCreateList(io, BREVO_LIST_NURTURE, folderId);
     await io.setSetting(BREVO_KEYS.listAll, String(listAll));

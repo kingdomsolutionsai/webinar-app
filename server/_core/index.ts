@@ -1,3 +1,4 @@
+import { sendDueSessionReminders } from "../sessionReminders";
 import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
@@ -74,6 +75,11 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
     // One-time, nonblocking replay sync; never prevents service startup.
     void syncApprovedReplayOnce();
+    if (process.env.NODE_ENV === "production") {
+      const tick = () => sendDueSessionReminders().catch(error => console.error("[Session reminders]", error.message));
+      void tick();
+      setInterval(tick, 60_000).unref();
+    }
   });
 }
 

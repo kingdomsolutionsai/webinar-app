@@ -17,22 +17,23 @@ export function canonicalEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-export function signUnsubscribe(email: string): string {
-  return createHmac("sha256", secret()).update(canonicalEmail(email)).digest("hex").slice(0, 32);
+export function signUnsubscribe(email: string, sessionKey?: string): string {
+  return createHmac("sha256", secret()).update(sessionKey ? `session:${sessionKey}:${canonicalEmail(email)}` : canonicalEmail(email)).digest("hex").slice(0, 32);
 }
 
-export function verifyUnsubscribe(email: string, token: string): boolean {
-  const expected = signUnsubscribe(email);
+export function verifyUnsubscribe(email: string, token: string, sessionKey?: string): boolean {
+  const expected = signUnsubscribe(email, sessionKey);
   if (typeof token !== "string" || token.length !== expected.length) return false;
   // Constant-time compare so a token cannot be discovered by timing.
   return timingSafeEqual(Buffer.from(expected), Buffer.from(token));
 }
 
 /** The opt-out URL placed in the email footer. */
-export function unsubscribeUrl(baseUrl: string, email: string): string {
+export function unsubscribeUrl(baseUrl: string, email: string, sessionKey?: string): string {
   const params = new URLSearchParams({
     e: canonicalEmail(email),
-    t: signUnsubscribe(email),
+    t: signUnsubscribe(email, sessionKey),
+    ...(sessionKey ? { s: sessionKey } : {}),
   });
   return `${baseUrl.replace(/\/+$/, "")}/unsubscribe?${params.toString()}`;
 }

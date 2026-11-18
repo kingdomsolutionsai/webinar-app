@@ -15,13 +15,12 @@ import {
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { confirmUrl, verifyConfirm } from "./confirm";
-import { sendAttendanceRewardEmail, sendConfirmEmail, sendEmail, sendSignupEmails } from "./email";
+import { verifyConfirm } from "./confirm";
+import { buildSessionConfirmationEmail, sendAttendanceRewardEmail, sendEmail, sendSignupEmails } from "./email";
 import { seatBlock, upcomingSession } from "./reminders";
 import {
   claimSequenceStep,
   confirmRegistration,
-  createRegistration,
   finishSequenceStep,
   getAllEventSettings,
   isUnsubscribed,
@@ -47,7 +46,7 @@ import {
   SEQUENCE_SCHEDULE,
 } from "./sequence";
 import { unsubscribeUrl, verifyUnsubscribe } from "./unsubscribe";
-import { brevoStatus, sendBrevoTests, setupBrevo, syncInBackground } from "./brevo";
+import { brevoStatus, requestMarketingConfirmation, syncFutureRegistration, sendBrevoTests, setupBrevo, syncInBackground } from "./brevo";
 import { sessionKeyFor, createSessionRegistration, confirmSessionRegistration, listSessionRegistrations, setSessionAttendance, unsubscribeSessions } from "./sessions";
 /** Only the project owner may read registrations or edit event details. */
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -62,6 +61,8 @@ const nameField = z
   .min(1, "Required")
   .max(120, "Please use 120 characters or fewer");
 const registrationInput = z.object({
+  eventDate: z.string().optional(),
+  marketingConsent: z.boolean().default(false),
   firstName: nameField,
   lastName: nameField,
   email: z
@@ -157,79 +158,33 @@ export const appRouter = router({
     }),
   }),
   registration: router({
-    /**
-     * Public signup. Stores the row with a submission timestamp, then sends
-     * only the double opt-in confirmation link — never the checklist itself.
-     * The checklist, the exercise-prompt email, and the owner notification all
-     * wait for `registration.confirm`, so an address that is never clicked is
-     * never treated as a verified lead.
-     */
     create: publicProcedure.input(registrationInput).mutation(async ({ input, ctx }) => {
-      const currentSettings = await getAllEventSettings();
-      const sessionKey = sessionKeyFor(currentSettings.date);
-      const row = sessionKey ? await createSessionRegistration({
-        sessionKey, firstName: input.firstName, lastName: input.lastName, email: input.email,
-        track: input.track ?? null,
-      }) : await createRegistration({
-        firstName: input.firstName,
-        lastName: input.lastName,
-        email: input.email,
-        track: input.track ?? null,
-        resource: input.resource ?? null,
-      });
-      // Copy to Brevo so the reminders reach them. Background: never slows signup.
-      if (!sessionKey) syncInBackground(input.email);
-      // Wrapped so that no mail failure can turn a successful signup into an
-      // error for someone who has already typed their details — they still see
-      // the "check your email" confirmation panel either way.
-      let emailed = false;
-      // Resolved once and reused, so the confirmation panel and the email agree
-      // on the same address. Behind the managed runtime the request host is an
-      // internal hostname, which is why the saved public address wins.
-      const storedForLinks = await getAllEventSettings();
-      const linkBaseUrl = resolveEmailBaseUrl(
-        storedForLinks[PUBLIC_URL_KEY],
-        resolveBaseUrl(ctx.req),
-      );
-      try {
-        const baseUrl = linkBaseUrl;
-        // Never mail someone who has opted out, even if they submit again.
-        if (await isUnsubscribed(input.email)) {
-          if (!sessionKey) await setRegistrationEmailStatus(input.email, "skipped", "Recipient has unsubscribed");
-        } else {
-          const result = await sendConfirmEmail({
-            firstName: row?.firstName ?? input.firstName,
-            lastName: row?.lastName ?? input.lastName,
-            email: input.email,
-            confirmUrl: confirmUrl(baseUrl, input.email, sessionKey ?? undefined),
-            logoUrl: baseUrl ? `${baseUrl}${LION_MARK_URL}` : undefined,
-            sessionOnly: Boolean(sessionKey),
-            sessionWhen: (() => {
-              const session = upcomingSession(storedForLinks);
-              return session ? seatBlock(session).when : undefined;
-            })(),
-          });
-          emailed = result.ok;
-          if (!sessionKey) await setRegistrationEmailStatus(
-            input.email,
-            result.ok ? "sent" : "failed",
-            result.ok ? result.messageId : result.error,
-          );
-          if (!result.ok) console.error("[Email] Confirmation send failed:", result.error);
-        }
-      } catch (error) {
-        console.error("[Email] Unexpected send error:", error);
-        if (!sessionKey) await setRegistrationEmailStatus(
-          input.email,
-          "failed",
-          error instanceof Error ? error.message : "Unknown error",
-        );
+      const settings = await getAllEventSettings();
+      const session = upcomingSession(settings);
+      const sessionKey = sessionKeyFor(settings.date);
+      if (!sessionKey || !session || !/^https:\/\//i.test(session.joinUrl) || input.eventDate !== settings.date) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Registration is closed or the session has changed. Refresh the page for current details." });
       }
-      return {
-        success: true as const,
-        firstName: row?.firstName ?? input.firstName,
-        emailed,
-      };
+      const row = await createSessionRegistration({
+        sessionKey, firstName: input.firstName, lastName: input.lastName,
+        email: input.email, track: input.track ?? null,
+      });
+      const baseUrl = resolveEmailBaseUrl(settings[PUBLIC_URL_KEY], resolveBaseUrl(ctx.req));
+      const message = buildSessionConfirmationEmail({
+        firstName: row.firstName,
+        seat: seatBlock(session),
+        registrationGiftUrl: registrationGiftUrlFor(sessionKey, baseUrl),
+        unsubscribeUrl: unsubscribeUrl(baseUrl, row.email, sessionKey),
+      });
+      const delivery = await sendEmail({
+        to: { email: row.email }, ...message, tags: ["webinar-registration"],
+      });
+      // Event reminders use the saved session record even if Brevo contact sync fails.
+      await syncFutureRegistration(sessionKey, row).catch(error => console.error("[Event contact]", error.message));
+      const marketingRequested = input.marketingConsent
+        ? await requestMarketingConfirmation(row.email).catch(() => false)
+        : false;
+      return { success: true as const, emailed: delivery.ok, firstName: row.firstName, marketingRequested };
     }),
     /**
      * Public double opt-in confirmation, reached from the link in the
@@ -247,13 +202,15 @@ export const appRouter = router({
         if (!verifyConfirm(input.email, input.token, input.sessionKey)) {
           return { ok: false as const, reason: "invalid" as const };
         }
+        const stored = await getAllEventSettings();
+        if (input.sessionKey && (sessionKeyFor(stored.date) !== input.sessionKey || !upcomingSession(stored))) {
+          return { ok: false as const, reason: "session_changed" as const };
+        }
         const { row, alreadyConfirmed } = input.sessionKey ? await confirmSessionRegistration(input.sessionKey, input.email) : await confirmRegistration(input.email);
         if (!row) {
           return { ok: false as const, reason: "not_found" as const };
         }
-        const stored = await getAllEventSettings();
         const baseUrl = resolveEmailBaseUrl(stored[PUBLIC_URL_KEY], resolveBaseUrl(ctx.req));
-        if (input.sessionKey && sessionKeyFor(stored.date) !== input.sessionKey) return {ok:false as const,reason:"session_changed" as const};
         if (!alreadyConfirmed) {
           // Joining the Nurture list in Brevo is what starts the day 2/7/14 letters.
           syncInBackground(row.email);
@@ -323,10 +280,14 @@ export const appRouter = router({
      * person cannot unsubscribe another.
      */
     unsubscribe: publicProcedure
-      .input(z.object({ email: z.string().email(), token: z.string().min(8) }))
+      .input(z.object({ email: z.string().email(), token: z.string().min(8), sessionKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }))
       .mutation(async ({ input }) => {
-        if (!verifyUnsubscribe(input.email, input.token)) {
+        if (!verifyUnsubscribe(input.email, input.token, input.sessionKey)) {
           return { ok: false as const, reason: "invalid" as const };
+        }
+        if (input.sessionKey) {
+          await unsubscribeSessions(input.email, input.sessionKey);
+          return { ok: true as const, firstName: null, alreadyDone: false };
         }
         const row = await unsubscribeByEmail(input.email);
         await unsubscribeSessions(input.email);
@@ -625,10 +586,11 @@ export const appRouter = router({
       const stored = await getAllEventSettings();
       const merged: Record<string, string> = { ...EVENT_DEFAULTS, ...stored };
       // Only what the public page displays. The Zoom link and passcode stay private.
-      return Object.fromEntries(PUBLIC_SETTING_KEYS.map(key => [key, merged[key] ?? ""])) as Record<
+      const session = upcomingSession(merged);
+      return { registrationOpen: !!session && /^https:\/\//i.test(session.joinUrl), ...Object.fromEntries(PUBLIC_SETTING_KEYS.map(key => [key, merged[key] ?? ""])) as Record<
         (typeof PUBLIC_SETTING_KEYS)[number],
         string
-      >;
+      > };
     }),
     /** Everything the owner can edit, for the dashboard. */
     getAll: adminProcedure.query(async () => {
