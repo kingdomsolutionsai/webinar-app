@@ -81,6 +81,7 @@ export default function Home() {
       <h1 className="mt-6 font-display text-4xl font-bold">{isLoading ? "Checking registration…" : isError ? "Registration is temporarily unavailable" : "Webinar registration is closed"}</h1>
       <p className="my-5 font-serif">{isError ? "Please refresh this page or email tabitha@kingdomsolutionsai.com for help." : "Explore the 30-Day Business Fast Track™ with Tabitha Rector."}</p>
       <a className="underline" href="https://www.kingdomsolutionsai.com/business-fast-track">Explore Business Fast Track</a>
+      <p className="mt-4"><a className="underline" href="/email-updates">Sign up for Tabitha’s email updates</a></p>
     </main>;
   }
 

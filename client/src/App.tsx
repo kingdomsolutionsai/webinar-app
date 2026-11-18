@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Unsubscribe from "./pages/Unsubscribe";
+import EmailUpdates from "./pages/EmailUpdates";
 import Confirm from "./pages/Confirm";
 import Feedback from "./pages/Feedback";
 function Router() {
@@ -18,6 +19,7 @@ function Router() {
       {/* Public on purpose: reached from an email footer, no login. */}
       <Route path={"/unsubscribe"} component={Unsubscribe} />
       {/* Public on purpose: reached from the double opt-in confirmation email, no login. */}
+      <Route path={"/email-updates"} component={EmailUpdates} />
       <Route path={"/confirm"} component={Confirm} />
       {/* Public attendee feedback survey; no account is required. */}
       <Route path={"/feedback"} component={Feedback} />

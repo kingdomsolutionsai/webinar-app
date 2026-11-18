@@ -158,6 +158,8 @@ export const appRouter = router({
     }),
   }),
   registration: router({
+    requestUpdates: publicProcedure.input(z.object({ email: z.string().trim().max(320).email() }))
+      .mutation(async ({ input }) => ({ requested: await requestMarketingConfirmation(input.email).catch(() => false) })),
     create: publicProcedure.input(registrationInput).mutation(async ({ input, ctx }) => {
       const settings = await getAllEventSettings();
       const session = upcomingSession(settings);
