@@ -114,6 +114,17 @@ async function holdNov18WebinarCampaigns() {
   return result;
 }
 
+// Run an immediate scan on website startup as well as from the hourly scheduler,
+// because the scheduled job may point at a different PUBLIC_URL configuration.
+const holdWindowNow = Date.now();
+if (holdWindowNow >= Date.parse("2026-11-17T20:00:00.000Z") &&
+    holdWindowNow < Date.parse("2026-11-19T05:00:00.000Z")) {
+  void holdNov18WebinarCampaigns().catch(error => {
+    console.error("[Nov 18 webinar email hold] Startup check failed:",
+      error instanceof Error ? error.message : String(error));
+  });
+}
+
 /**
  * POST /api/scheduled/sequence: the Render cron job calls this hourly. Retired.
  *
