@@ -12,6 +12,7 @@ import { useEffect, useRef } from "react";
 export default function Unsubscribe() {
   const params = new URLSearchParams(window.location.search);
   const email = params.get("e") ?? "";
+  const sessionKey = params.get("s") ?? undefined;
   const token = params.get("t") ?? "";
 
   const run = trpc.registration.unsubscribe.useMutation();
@@ -19,11 +20,12 @@ export default function Unsubscribe() {
   const fired = useRef(false);
 
   useEffect(() => {
+    if (sessionKey) return;
     if (fired.current) return;
     if (!email || !token) return;
     fired.current = true;
     run.mutate({ email, token });
-  }, [email, token, run]);
+  }, [email, token, run, sessionKey]);
 
   const missing = !email || !token;
   const failed = missing || (run.data && !run.data.ok) || run.isError;
@@ -42,6 +44,7 @@ export default function Unsubscribe() {
             </>
           ) : null}
 
+          {sessionKey && !missing && run.isIdle && <Button className="mt-6" onClick={() => run.mutate({ email, token, sessionKey })}>Stop reminders for this event</Button>}
           {done ? (
             <>
               <div className="mx-auto mt-7 flex size-11 items-center justify-center border border-green/40 bg-green/10">
@@ -54,8 +57,7 @@ export default function Unsubscribe() {
               </h1>
               <div className="mx-auto mt-5 h-[3px] w-16 bg-gold" />
               <p className="mt-6 font-serif text-[17px] leading-relaxed text-ink/75">
-                No further emails will be sent to this address. Anything you have already
-                downloaded remains yours to keep.
+                {sessionKey ? "Reminders for this event have been turned off." : "You have been unsubscribed from webinar emails."}
               </p>
               <p className="mt-4 font-serif text-[15px] leading-relaxed text-ink/55">
                 If this was a mistake, you are welcome back any time — simply sign up again.

@@ -385,12 +385,13 @@ export async function claimSequenceStep(email: string, step: number): Promise<bo
   const db = await getDb();
   if (!db) return false;
   try {
-    await db
-      .insert(sequenceSends)
-      .values({ email: email.trim().toLowerCase(), step, status: "sending" });
-    return true;
-  } catch {
-    // Duplicate key: another run already claimed this step.
+    const rows = await db.insert(sequenceSends)
+      .values({ email: email.trim().toLowerCase(), step, status: "sending" })
+      .onConflictDoNothing()
+      .returning({ id: sequenceSends.id });
+    return rows.length > 0;
+  } catch (error) {
+    console.error("[Sequence] Could not claim send:", error);
     return false;
   }
 }

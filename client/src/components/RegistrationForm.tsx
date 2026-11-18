@@ -28,12 +28,15 @@ function validate(values: { firstName: string; lastName: string; email: string }
 export function RegistrationForm({
   track,
   mode,
+  eventDate,
 }: {
   track: TrackId | null;
   mode: PageMode;
+  eventDate: string;
 }) {
   const copy = MODE_COPY[mode];
   const [values, setValues] = useState({ firstName: "", lastName: "", email: "" });
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   // Set once the signup call succeeds. Part One itself has not been sent
@@ -74,6 +77,8 @@ export function RegistrationForm({
     if (Object.keys(found).length > 0) return;
     setConfirmationEmailFailed(false);
     register.mutate({
+      eventDate,
+      marketingConsent,
       firstName: values.firstName.trim(),
       lastName: values.lastName.trim(),
       email: values.email.trim(),
@@ -92,22 +97,22 @@ export function RegistrationForm({
               Check your email
             </p>
             <h3 className="mt-1 font-display text-2xl font-black text-navy">
-              Almost there, {confirmedName}.
+              Your seat is reserved, {confirmedName}.
             </h3>
           </div>
         </div>
         <div className="mt-7 h-[3px] w-14 bg-gold" />
         <p className="mt-7 font-serif text-[17px] leading-relaxed text-ink/80">
-          I just sent a confirmation link to the address you entered. Please click it to confirm
-          your email and reserve your seat.
-          {mode === "waitlist"
-            ? " You will also be first to know when the live session is scheduled."
-            : " Your private Zoom details will be sent after confirmation."}
+          Your joining details were emailed to {values.email.trim()}. Save that email for the session.
         </p>
         <p className="mt-3 flex items-start gap-2 font-serif text-[15px] leading-relaxed text-ink/60">
           <Mail className="mt-1 size-3.5 shrink-0 text-gold" />
-          If it has not arrived in a few minutes, please check your spam folder.
+          Check your spam folder. If you need another copy or entered the wrong address, use the button below.
         </p>
+        {marketingConsent && <p className="mt-4 text-sm">{register.data?.marketingRequested
+          ? "Check your inbox for a separate email to confirm your marketing subscription."
+          : "We could not send your optional subscription confirmation. Your webinar registration is complete."}</p>}
+        <Button className="mt-5" onClick={() => setConfirmedName(null)}>Correct email or resend details</Button>
       </div>
     );
   }
@@ -176,6 +181,10 @@ export function RegistrationForm({
             </span>
           </p>
         ) : null}
+        <label className="flex items-start gap-3 text-sm">
+          <input type="checkbox" checked={marketingConsent} onChange={e => setMarketingConsent(e.target.checked)} />
+          Yes, send me ongoing business tips and offers from Tabitha Rector. I’ll confirm this separately by email.
+        </label>
         {confirmationEmailFailed ? (
           <p role="alert" className="flex items-start gap-2 border border-destructive/40 bg-destructive/5 p-3 font-sans text-[13px] text-destructive">
             <AlertCircle className="mt-0.5 size-4 shrink-0" />
@@ -187,7 +196,7 @@ export function RegistrationForm({
             role="alert"
             className="flex items-start gap-2 border border-destructive/40 bg-destructive/5 p-3 font-sans text-[13px] text-destructive">
             <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            Something went wrong saving your details. Please try again, or email
+            {register.error.message} For help, email
             tabitha@kingdomsolutionsai.com and I will add you personally.
           </p>
         ) : null}
@@ -208,7 +217,7 @@ export function RegistrationForm({
         <p className="font-sans text-[11px] leading-relaxed text-ink/45">
           {mode === "waitlist"
             ? "Your details are used only to send Part One and announce the session. No sharing, no selling."
-            : "Your details are used only for this session. No sharing, no selling."}
+            : "Registration includes your joining details and event reminders. Ongoing marketing emails are optional."}
         </p>
       </form>
     </div>

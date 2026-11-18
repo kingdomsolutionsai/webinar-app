@@ -5,6 +5,7 @@ import type { TrpcContext } from "./_core/context";
  * The db module is mocked so these specs exercise validation, authorization and
  * CSV shaping without needing a live database.
  */
+const eventDate = "December 8, 2099";
 const created: unknown[] = [];
 const settingWrites: [string, string][] = [];
 const emailStatusWrites: [string, string, string][] = [];
@@ -24,6 +25,7 @@ const sampleRows = [
     resource: "checklist" as string | null,
     emailStatus: "sent" as string | null,
     emailDetail: "<abc@brevo>" as string | null,
+    confirmedAt: new Date("2026-08-02T15:04:05Z"),
     createdAt: new Date("2026-08-02T15:04:05Z"),
     updatedAt: new Date("2026-08-02T15:04:05Z"),
   },
@@ -42,6 +44,16 @@ const sampleRows = [
   },
 ];
 
+vi.mock("./brevo", () => ({ syncFutureRegistration: vi.fn(async () => {}), syncInBackground: vi.fn() }));
+vi.mock("./sessions", async original => ({
+  ...await original<typeof import("./sessions")>(),
+  unsubscribeSessions: vi.fn(async () => {}),
+  createSessionRegistration: vi.fn(async input => {
+    created.push(input);
+    return { ...input, email: input.email.toLowerCase() };
+  }),
+}));
+
 vi.mock("./db", () => ({
   createRegistration: vi.fn(async (input: Record<string, unknown>) => {
     created.push(input);
@@ -49,7 +61,8 @@ vi.mock("./db", () => ({
   }),
   listRegistrations: vi.fn(async () => sampleRows),
   getAllEventSettings: vi.fn(async () => ({
-    date: "Thursday, September 18",
+    date: eventDate,
+    time: "11 AM",
     joinUrl: "https://zoom.us/j/123456789?pwd=secret",
     zoomPasscode: "999999",
   })),
@@ -77,7 +90,8 @@ vi.mock("./db", () => ({
  * The mail module is mocked so no real send happens during these specs. The real
  * Brevo payload is covered separately in `email.test.ts`.
  */
-vi.mock("./email", () => ({
+vi.mock("./email", async original => ({
+  ...await original<typeof import("./email")>(),
   sendSignupEmails: vi.fn(async (input: Record<string, unknown>) => {
     sentSignupEmails.push(input);
     return { ok: true as const, messageId: "<test@brevo>" };
@@ -120,6 +134,7 @@ describe("registration.create", () => {
     const caller = appRouter.createCaller(makeCtx());
 
     const result = await caller.registration.create({
+      eventDate,
       firstName: "  Tabitha ",
       lastName: " Rector ",
       email: "Tabitha@Example.COM",
@@ -140,6 +155,7 @@ describe("registration.create", () => {
     const caller = appRouter.createCaller(makeCtx());
     await expect(
       caller.registration.create({
+      eventDate,
         firstName: "Ann",
         lastName: "Lee",
         email: "ann@example.com",
@@ -147,21 +163,24 @@ describe("registration.create", () => {
     ).resolves.toMatchObject({ success: true });
   });
 
-  it("records which free resource the visitor asked for", async () => {
+  it("keeps legacy resource choices out of dated event registrations", async () => {
     const caller = appRouter.createCaller(makeCtx());
     await caller.registration.create({
+      eventDate,
       firstName: "Mae",
       lastName: "Jemison",
       email: "mae@example.com",
       resource: "checklist",
     });
-    expect(created[0]).toMatchObject({ resource: "checklist" });
+    expect(created[0]).toMatchObject({ sessionKey: "2099-12-08" });
+    expect(created[0]).not.toHaveProperty("resource");
   });
 
   it("rejects a resource value that is not one of the offered options", async () => {
     const caller = appRouter.createCaller(makeCtx());
     await expect(
       caller.registration.create({
+      eventDate,
         firstName: "Mae",
         lastName: "Jemison",
         email: "mae@example.com",
@@ -176,6 +195,7 @@ describe("registration.create", () => {
     const caller = appRouter.createCaller(makeCtx());
     await expect(
       caller.registration.create({
+      eventDate,
         firstName: "Ann",
         lastName: "Lee",
         email: "not-an-email",
@@ -188,6 +208,7 @@ describe("registration.create", () => {
     const caller = appRouter.createCaller(makeCtx());
     await expect(
       caller.registration.create({
+      eventDate,
         firstName: "   ",
         lastName: "Lee",
         email: "ann@example.com",
@@ -225,14 +246,15 @@ describe("owner-only access", () => {
 
 describe("registration.exportCsv", () => {
   it("still succeeds for the visitor when the mail provider fails", async () => {
-    const { sendSignupEmails } = await import("./email");
-    vi.mocked(sendSignupEmails).mockResolvedValueOnce({
+    const { sendEmail } = await import("./email");
+    vi.mocked(sendEmail).mockResolvedValueOnce({
       ok: false as const,
       error: "HTTP 400: unverified sender",
     });
 
     const caller = appRouter.createCaller(makeCtx());
     const result = await caller.registration.create({
+      eventDate,
       firstName: "Mail",
       lastName: "Down",
       email: "mail-down@example.com",
@@ -242,29 +264,21 @@ describe("registration.exportCsv", () => {
     // The person who typed their details must still see success.
     expect(result.success).toBe(true);
     expect(result.emailed).toBe(false);
-    // And the failure must be recorded so it is visible in the dashboard.
-    expect(emailStatusWrites.at(-1)).toEqual([
-      "mail-down@example.com",
-      "failed",
-      "HTTP 400: unverified sender",
-    ]);
+    expect(created).toHaveLength(1);
   });
 
-  it("passes the visitor's resource choice through to the mail layer", async () => {
+  it("keeps session mail separate from legacy resource fulfillment", async () => {
     const caller = appRouter.createCaller(makeCtx());
     await caller.registration.create({
+      eventDate,
       firstName: "Pick",
       lastName: "Checklist",
       email: "pick@example.com",
       resource: "checklist",
       track: "reorganizing",
     });
-    const last = sentSignupEmails.at(-1);
-    expect(last).toMatchObject({
-      email: "pick@example.com",
-      resource: "checklist",
-      track: "reorganizing",
-    });
+    expect(created[0]).toMatchObject({ email: "pick@example.com", track: "reorganizing" });
+    expect(sentSignupEmails).toHaveLength(0);
   });
 
   it("produces a header row and one row per registration", async () => {
@@ -322,8 +336,8 @@ describe("settings.get", () => {
     const caller = appRouter.createCaller(makeCtx());
     const settings = await caller.settings.get();
 
-    expect(settings.date).toBe("Thursday, September 18");
-    expect(settings.time).toBe("[TIME]");
+    expect(settings.date).toBe(eventDate);
+    expect(settings.time).toBe("11 AM");
     expect(settings.duration).toBe("[DURATION]");
     expect(settings.price).toBe("[PRICE]");
   });
@@ -332,30 +346,28 @@ describe("settings.get", () => {
     const caller = appRouter.createCaller(makeCtx());
     const settings = (await caller.settings.get()) as Record<string, string>;
 
-    expect(Object.keys(settings).sort()).toEqual(["date", "duration", "price", "time"]);
+    expect(Object.keys(settings).sort()).toEqual(["date", "duration", "price", "registrationOpen", "time"]);
     expect(JSON.stringify(settings)).not.toContain("zoom.us");
     expect(JSON.stringify(settings)).not.toContain("999999");
   });
 });
 
 describe("unsubscribe and resend", () => {
-  it("puts counted download links in the signup email", async () => {
+  it("sends only session access at registration", async () => {
     unsubscribedFlag = false;
     sentSignupEmails.length = 0;
     const caller = appRouter.createCaller(makeCtx());
 
     await caller.registration.create({
+      eventDate,
       firstName: "Ada",
       lastName: "Byron",
       email: "links@example.com",
     });
 
-    const payload = sentSignupEmails[0] as {
-      trackedUrls?: { chapter: string; checklist: string };
-    };
-    expect(payload.trackedUrls?.chapter).toContain("/api/download?");
-    expect(payload.trackedUrls?.chapter).toContain("r=chapter");
-    expect(payload.trackedUrls?.checklist).toContain("r=checklist");
+    const { sendEmail } = await import("./email");
+    expect(vi.mocked(sendEmail).mock.calls.at(-1)?.[0].text).toContain("https://zoom.us/j/");
+    expect(vi.mocked(sendEmail).mock.calls.at(-1)?.[0].text).not.toContain("/api/download");
   });
 
   /**
@@ -368,6 +380,7 @@ describe("unsubscribe and resend", () => {
     const { getAllEventSettings } = await import("./db");
     const { PUBLIC_URL_KEY } = await import("@shared/event");
     vi.mocked(getAllEventSettings).mockResolvedValueOnce({
+      date: eventDate, time: "11 AM", joinUrl: "https://zoom.test/j/123456789",
       [PUBLIC_URL_KEY]: "https://webinarreg-wksscmbd.manus.space",
     } as never);
 
@@ -377,35 +390,33 @@ describe("unsubscribe and resend", () => {
     } as TrpcContext);
 
     const result = await caller.registration.create({
+      eventDate,
       firstName: "Ada",
       lastName: "Byron",
       email: "public-url@example.com",
     });
 
-    expect(result.downloads.chapter).toContain("https://webinarreg-wksscmbd.manus.space");
-    expect(result.downloads.chapter).not.toContain("run.app");
+    const { sendEmail } = await import("./email");
+    expect(result.emailed).toBe(true);
+    const html = vi.mocked(sendEmail).mock.calls.at(-1)?.[0].html;
+    expect(html).toContain("https://webinarreg-wksscmbd.manus.space/unsubscribe");
+    expect(html).not.toContain("internal-run-host");
   });
 
-  it("never emails an address that has opted out, even on a fresh submission", async () => {
+  it("delivers requested event access independently of earlier marketing opt-outs", async () => {
     unsubscribedFlag = true;
     const caller = appRouter.createCaller(makeCtx());
 
     const result = await caller.registration.create({
+      eventDate,
       firstName: "Opted",
       lastName: "Out",
       email: "opted@example.com",
     });
 
-    // The signup still succeeds — they may simply want the downloads on the page.
-    expect(result.success).toBe(true);
-    expect(result.emailed).toBe(false);
-    // But no send was attempted at all.
+    expect(result.emailed).toBe(true);
+    expect(result.marketingRequested).toBe(false);
     expect(sentSignupEmails).toHaveLength(0);
-    expect(emailStatusWrites.at(-1)).toEqual([
-      "opted@example.com",
-      "skipped",
-      "Recipient has unsubscribed",
-    ]);
   });
 
   it("rejects an opt-out request whose signature does not match", async () => {

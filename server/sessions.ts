@@ -39,10 +39,10 @@ export async function setSessionAttendance(sessionKey:string,email:string,attend
  if(!attended&&alreadyAttended)await db.update(sessionRegistrations).set({attendedAt:null}).where(where);
  return {row,alreadyAttended};
 }
-export async function unsubscribeSessions(email:string) {
+export async function unsubscribeSessions(email:string, sessionKey?: string) {
  const db=await getDb();if(!db)return;
  await db.update(sessionRegistrations).set({unsubscribedAt:new Date()})
- .where(eq(sessionRegistrations.email,email.trim().toLowerCase()));
+ .where(and(eq(sessionRegistrations.email,email.trim().toLowerCase()), sessionKey ? eq(sessionRegistrations.sessionKey, sessionKey) : undefined));
 }
 export async function isSessionUnsubscribed(email:string) {
  const db=await getDb();if(!db)return false;

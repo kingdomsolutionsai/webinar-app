@@ -20,8 +20,8 @@ function buildChatContext(event: PublicEvent): string {
       : "The next live date will be announced on this page.",
     "Core promise: help attendees recognize a possible business gap and leave with one clear next action. The full teaching is shared during the live workshop.",
     "What participants do: reflect on where their effort is not producing results and identify a practical starting point. AI may support processes, with human authority throughout.",
-    "Two distinct gifts: after email confirmation, the five-minute Business Gap Clarity Exercise; after live attendance, the First-Sale Readiness Checklist. Live Q&A is included.",
-    "Registration: first name, last name, email address. Email confirmation is required. Private Zoom details are delivered only after confirmation. Previous webinars do not automatically register someone for this one.",
+    "Live attendees receive the First-Sale Readiness Checklist. Live Q&A is included.",
+    "Registration: first name, last name, email address. The first registration email contains private Zoom details. Marketing signup is separate. Previous webinars do not automatically register someone for this one.",
     "This is a faith-rooted business webinar, not a book promotion. Do not teach the full method in chat.",
     "Avoid promising guaranteed sales, earnings, or business outcomes. The workshop is educational, not legal, tax, or financial advice.",
     "Answer warmly and briefly. Invite the visitor to use the form. For questions not addressed here, email tabitha@kingdomsolutionsai.com.",
@@ -74,6 +74,16 @@ export default function Home() {
   const scrollToRegister = () => {
     document.getElementById("register")?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
+
+  if (!settings?.registrationOpen) {
+    return <main className="container max-w-2xl py-24 text-ink">
+      <LionMark size={48} />
+      <h1 className="mt-6 font-display text-4xl font-bold">{isLoading ? "Checking registration…" : isError ? "Registration is temporarily unavailable" : "Webinar registration is closed"}</h1>
+      <p className="my-5 font-serif">{isError ? "Please refresh this page or email tabitha@kingdomsolutionsai.com for help." : "Explore the 30-Day Business Fast Track™ with Tabitha Rector."}</p>
+      <a className="underline" href="https://www.kingdomsolutionsai.com/business-fast-track">Explore Business Fast Track</a>
+      <p className="mt-4"><a className="underline" href="/email-updates">Sign up for Tabitha’s email updates</a></p>
+    </main>;
+  }
 
   return (
     <div className="min-h-screen bg-[#fbfaf7] text-ink">
@@ -159,7 +169,7 @@ export default function Home() {
                 <p className="mt-2 font-serif text-[15px] leading-relaxed text-white/70">
                   {isWaitlist
                     ? "Leave your details to hear when the next live workshop is announced."
-                    : "Register and confirm your email to receive your private Zoom details and a free 5-Minute Business Gap Clarity Exercise. Attend live to receive the First-Sale Readiness Checklist as my thank-you."}
+                    : "Register to receive your private Zoom details by email. Attend live to receive the First-Sale Readiness Checklist as my thank-you."}
                 </p>
               </div>
               {isLoading ? (
@@ -172,7 +182,7 @@ export default function Home() {
                   email tabitha@kingdomsolutionsai.com for help.
                 </div>
               ) : (
-                <RegistrationForm track={null} mode={mode} />
+                <RegistrationForm track={null} mode={mode} eventDate={event.date} />
               )}
               {!isWaitlist && !isLoading && !isError ? (
                 <p className="mt-4 font-serif text-[13px] leading-relaxed text-white/65">
@@ -240,7 +250,7 @@ export default function Home() {
                 <h2 className="font-display text-2xl font-bold text-ink">Why attend live?</h2>
               </div>
               <p className="mt-3 font-serif text-[17px] leading-relaxed text-ink/75">
-                After confirming your registration, receive the five-minute Business Gap Clarity Exercise.
+                Your registration email includes your private joining details.
                 Then join me live for a guided gap-identification exercise and Q&A. Women who
                 attend live also receive my First-Sale Readiness Checklist. If you want guided
                 implementation, I will explain my 30-Day Business Fast Track™, starting soon.

@@ -626,8 +626,8 @@ function CurrentSessionPanel() {
   });
   return <section className="border border-gold/40 bg-white">
     <div className="border-b border-gold/20 px-7 py-6">
-      <h2 className="font-display text-xl font-bold text-navy">Current webinar: confirmed seats & attendance</h2>
-      <p className="mt-2 font-serif text-[15px] text-ink/60">The current webinar has its own registration list. October registrants are not enrolled automatically. Only confirmed current-event registrations qualify for reminders.</p>
+      <h2 className="font-display text-xl font-bold text-navy">Current webinar: registrations & attendance</h2>
+      <p className="mt-2 font-serif text-[15px] text-ink/60">The current webinar has its own registration list. October registrants are not enrolled automatically. New registrations receive joining details and reminders independently of marketing consent.</p>
     </div>
     <div className="overflow-x-auto">
       {isLoading?<p className="p-7 font-serif">Loading current registrations…</p>:
@@ -636,8 +636,8 @@ function CurrentSessionPanel() {
         <thead className="bg-ink font-sans text-[11px] uppercase tracking-wide text-white"><tr><th className="px-6 py-3">Registrant</th><th className="px-6 py-3">Status</th><th className="px-6 py-3">Live attendance</th></tr></thead>
         <tbody>{rows.map(row=><tr key={row.id} className="border-b border-border">
           <td className="px-6 py-4"><span className="font-semibold">{row.firstName} {row.lastName}</span><br/><span className="text-[13px] text-ink/60">{row.email}</span></td>
-          <td className="px-6 py-4 font-serif">{row.unsubscribedAt?"Opted out":row.confirmedAt?"Confirmed":"Awaiting email confirmation"}</td>
-          <td className="px-6 py-4"><button disabled={!row.confirmedAt||!!row.unsubscribedAt||attendance.isPending}
+          <td className="px-6 py-4 font-serif">{row.unsubscribedAt?"Opted out":"sessionKey" in row && String(row.sessionKey) > "2026-11-17" ? "Registered" : row.confirmedAt?"Confirmed":"Unconfirmed"}</td>
+          <td className="px-6 py-4"><button disabled={attendance.isPending}
             className="border border-gold px-3 py-2 text-[11px] font-bold uppercase text-ink hover:bg-gold-tint disabled:opacity-30"
             onClick={()=>attendance.mutate({email:row.email,attended:!row.attendedAt})}>
             {row.attendedAt?"Attended ✓ — undo":"Mark attended"}
