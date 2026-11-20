@@ -103,15 +103,15 @@ export function RegistrationForm({
         </div>
         <div className="mt-7 h-[3px] w-14 bg-gold" />
         <p className="mt-7 font-serif text-[17px] leading-relaxed text-ink/80">
-          Your joining details were emailed to {values.email.trim()}. Save that email for the session.
+          Your joining details and free 5-Minute Clarity Exercise were emailed to {values.email.trim()}. Save that email for the session.
         </p>
         <p className="mt-3 flex items-start gap-2 font-serif text-[15px] leading-relaxed text-ink/60">
           <Mail className="mt-1 size-3.5 shrink-0 text-gold" />
           Check your spam folder. If you need another copy or entered the wrong address, use the button below.
         </p>
-        {marketingConsent && <p className="mt-4 text-sm">{register.data?.marketingRequested
-          ? "Check your inbox for a separate email to confirm your marketing subscription."
-          : "We could not send your optional subscription confirmation. Your webinar registration is complete."}</p>}
+        {marketingConsent && !register.data?.marketingSubscribed && (
+          <p className="mt-4 text-sm">We could not add you to the optional email list. Your webinar registration is complete.</p>
+        )}
         <Button className="mt-5" onClick={() => setConfirmedName(null)}>Correct email or resend details</Button>
       </div>
     );
@@ -134,7 +134,11 @@ export function RegistrationForm({
           One quick email confirmation and it's yours, at no cost. You will also be first to
           know when the live session is scheduled.
         </p>
-      ) : null}
+      ) : (
+        <p className="mt-6 font-serif text-[16px] leading-relaxed text-ink/70">
+          Register for Finding the Gap and get the free 5-Minute Clarity Exercise.
+        </p>
+      )}
       <form onSubmit={handleSubmit} noValidate className="mt-7 space-y-5">
         {fields.map(field => {
           const error = errors[field.id];
@@ -183,7 +187,7 @@ export function RegistrationForm({
         ) : null}
         <label className="flex items-start gap-3 text-sm">
           <input type="checkbox" checked={marketingConsent} onChange={e => setMarketingConsent(e.target.checked)} />
-          Yes, send me ongoing business tips and offers from Tabitha Rector. I’ll confirm this separately by email.
+          Yes, send me business tips and occasional offers from Tabitha Rector.
         </label>
         {confirmationEmailFailed ? (
           <p role="alert" className="flex items-start gap-2 border border-destructive/40 bg-destructive/5 p-3 font-sans text-[13px] text-destructive">
@@ -211,7 +215,7 @@ export function RegistrationForm({
               {copy.formSubmitting}
             </>
           ) : (
-            copy.formSubmit
+            mode === "scheduled" ? "Register & Get the Free Exercise" : copy.formSubmit
           )}
         </Button>
         <p className="font-sans text-[11px] leading-relaxed text-ink/45">

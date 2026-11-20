@@ -10,6 +10,7 @@ import {
   MAIL_OWNER,
   PUBLIC_URL_KEY,
   resolveEmailBaseUrl,
+  REGISTRATION_GIFT,
   registrationGiftUrlFor,
 } from "../shared/event";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -46,7 +47,7 @@ import {
   SEQUENCE_SCHEDULE,
 } from "./sequence";
 import { unsubscribeUrl, verifyUnsubscribe } from "./unsubscribe";
-import { brevoStatus, requestMarketingConfirmation, syncFutureRegistration, sendBrevoTests, setupBrevo, syncInBackground } from "./brevo";
+import { brevoStatus, requestMarketingConfirmation, syncFutureRegistration, sendBrevoTests, setupBrevo, subscribeWebinarRegistrant, syncInBackground } from "./brevo";
 import { sessionKeyFor, createSessionRegistration, confirmSessionRegistration, listSessionRegistrations, setSessionAttendance, unsubscribeSessions } from "./sessions";
 /** Only the project owner may read registrations or edit event details. */
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -175,7 +176,7 @@ export const appRouter = router({
       const message = buildSessionConfirmationEmail({
         firstName: row.firstName,
         seat: seatBlock(session),
-        registrationGiftUrl: registrationGiftUrlFor(sessionKey, baseUrl),
+        registrationGiftUrl: `${baseUrl.replace(/\/+$/, "")}${REGISTRATION_GIFT.url}`,
         unsubscribeUrl: unsubscribeUrl(baseUrl, row.email, sessionKey),
       });
       const delivery = await sendEmail({
@@ -183,10 +184,10 @@ export const appRouter = router({
       });
       // Event reminders use the saved session record even if Brevo contact sync fails.
       await syncFutureRegistration(sessionKey, row).catch(error => console.error("[Event contact]", error.message));
-      const marketingRequested = input.marketingConsent
-        ? await requestMarketingConfirmation(row.email).catch(() => false)
+      const marketingSubscribed = input.marketingConsent
+        ? await subscribeWebinarRegistrant(row.email).catch(() => false)
         : false;
-      return { success: true as const, emailed: delivery.ok, firstName: row.firstName, marketingRequested };
+      return { success: true as const, emailed: delivery.ok, firstName: row.firstName, marketingSubscribed };
     }),
     /**
      * Public double opt-in confirmation, reached from the link in the
