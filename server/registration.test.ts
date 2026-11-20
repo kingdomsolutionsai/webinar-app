@@ -415,7 +415,7 @@ describe("unsubscribe and resend", () => {
     });
 
     expect(result.emailed).toBe(true);
-    expect(result.marketingRequested).toBe(false);
+    expect(result.marketingSubscribed).toBe(false);
     expect(sentSignupEmails).toHaveLength(0);
   });
 

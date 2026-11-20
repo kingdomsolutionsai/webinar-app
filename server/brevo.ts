@@ -220,8 +220,10 @@ export async function syncFutureRegistration(sessionKey: string, row: {email: st
   if (!result.ok) throw new Error(result.error);
 }
 
+const MARKETING_LIST_NAME = "Kingdom Solutions Business & AI: Marketing subscribers";
+
 async function ensureMarketingSettings(io: BrevoIO, settings: Record<string, string>, folderId: number) {
-  const marketingList = await findOrCreateList(io, "Kingdom Solutions Business & AI: Marketing subscribers", folderId);
+  const marketingList = await findOrCreateList(io, MARKETING_LIST_NAME, folderId);
   const template = await upsertTemplate(io, Number(settings.webinarMarketingTemplate) || undefined, {
     tag: "optin", name: "Kingdom Solutions optional email subscription", subject: "Confirm your subscription to Kingdom Solutions Business & AI",
     html: '<p>You asked to receive ongoing business tips and offers from Tabitha Rector.</p><p><a href="{{ params.DOIurl }}">Confirm my subscription</a></p><p>If you did not request these emails, you can ignore this message.</p>',
@@ -230,6 +232,17 @@ async function ensureMarketingSettings(io: BrevoIO, settings: Record<string, str
   await io.setSetting("webinarMarketingTemplate", String(template));
   await io.setSetting("webinarMarketingOptinTemplate", String(template));
   return { listId: marketingList, templateId: template };
+}
+
+/** The webinar form collects explicit consent before calling this. Preserve Brevo's blocklist status. */
+export async function subscribeWebinarRegistrant(email: string, io = defaultIO()) {
+  const client = await io;
+  const settings = await client.getSettings();
+  const listId = Number(settings.webinarMarketingList)
+    || await findOrCreateList(client, MARKETING_LIST_NAME, await findOrCreateFolder(client));
+  const result = await api(client, "POST", "/contacts", { email, listIds: [listId], updateEnabled: true });
+  if (!result.ok) console.error("[Webinar marketing signup]", result.error);
+  return result.ok;
 }
 
 /** Brevo adds the address to the dedicated marketing list only after the email link is clicked. */

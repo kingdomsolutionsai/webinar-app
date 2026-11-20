@@ -7,6 +7,7 @@ import {
   contactPayload,
   planEventCampaigns,
   requestMarketingConfirmation,
+  subscribeWebinarRegistrant,
   setupBrevo,
   sendBrevoTests,
   type BrevoIO,
@@ -500,4 +501,15 @@ it("repairs an existing marketing template before requesting double opt-in", asy
   const { io } = makeIO(brevo, { settings: { webinarMarketingList: "43", webinarMarketingTemplate: "345" } });
   expect(await requestMarketingConfirmation("owner@example.test", Promise.resolve(io))).toBe(true);
   expect(brevo.templates.get(345)).toMatchObject({ tag: "optin", isActive: true });
+});
+
+it("adds checked webinar signups to the marketing list without a confirmation email or clearing a block", async () => {
+  const brevo = fakeBrevo();
+  const email = "attendee@example.test";
+  brevo.contacts.set(email, { emailBlacklisted: true });
+  const { io } = makeIO(brevo, { settings: { webinarMarketingList: "43" } });
+
+  expect(await subscribeWebinarRegistrant(email, Promise.resolve(io))).toBe(true);
+  expect(brevo.contacts.get(email)).toMatchObject({ listIds: [43], emailBlacklisted: true });
+  expect(brevo.calls).toEqual(["POST /contacts"]);
 });
