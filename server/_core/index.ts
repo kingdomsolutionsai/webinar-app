@@ -1,3 +1,4 @@
+import { registerPayhipRoutes, runPayhipJobs } from "../payhip";
 import { sendDueSessionReminders } from "../sessionReminders";
 import "dotenv/config";
 import express from "express";
@@ -49,6 +50,7 @@ async function startServer() {
   // Counted downloads and the scheduled sequence dispatch. Must be mounted
   // before the Vite/static fallthrough, which would otherwise swallow them.
   registerRoutes(app);
+  registerPayhipRoutes(app);
   // tRPC API
   app.use(
     "/api/trpc",
@@ -79,6 +81,9 @@ async function startServer() {
       const tick = () => sendDueSessionReminders().catch(error => console.error("[Session reminders]", error.message));
       void tick();
       setInterval(tick, 60_000).unref();
+      const payhipTick = () => runPayhipJobs().catch(() => console.error("[Payhip] Worker failed"));
+      void payhipTick();
+      setInterval(payhipTick, 60_000).unref();
     }
   });
 }
